@@ -2,19 +2,13 @@
 #include "log.h"
 #include "stm32f10x_exti.h"
 
-#define MAX_FAILED_TIMES 0xffffffff
-#define VL53L0X_DEVS_NUM 2
-
-VL53L0X_DeviceInfo_t vl53l0x_dev_info;//设备ID版本信息
-
 VL53L0X_Dev_t VL53L0XDevs[VL53L0X_DEVS_NUM];//设备I2C数据参数
-u8 g_DevsAddr[VL53L0X_DEVS_NUM] = {0x54, 0x56};
 
 VL53L0X_RangingMeasurementData_t vl53l0x_data;//测距测量结构体
 
 vu16 Distance_data=0;//保存测距数据
 
-int alarm_flag = 0;
+u8 g_aucAlarmFlag[VL53L0X_DEVS_NUM] = 0;
 
 //VL53L0X各精度模式参数
 //0：默认;1:高精度;2:长距离;3:高速
@@ -46,6 +40,26 @@ mode_data Mode_data[]=
 		
 };
 
+static void VL53L0X_GPIO_INIT(VOID)
+{
+    // Setup rangefinder device structs
+    GPIO_InitTypeDef  GPIO_InitStructure;
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4 ;             //端口配置
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;       //推挽输出
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;      //IO口速度为50MHz
+    GPIO_Init(GPIOA, &GPIO_InitStructure);                 //根据设定参数初始化GPIOA
+
+    VL53L0X_XSHUT_0 = 0;//失能VL53L0X
+
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8 ;             //端口配置
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;       //推挽输出
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;      //IO口速度为50MHz
+    GPIO_Init(GPIOA, &GPIO_InitStructure);                 //根据设定参数初始化GPIOA
+
+    VL53L0X_XSHUT_1 = 0;
+
+    return;
+}
 
 //test
 void VL53L0X_begin(void)
@@ -53,22 +67,8 @@ void VL53L0X_begin(void)
     int cnt = 0;
     VL53L0X_Error rtn;
 
-    // Setup rangefinder device structs
-    GPIO_InitTypeDef  GPIO_InitStructure;
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4 ;	           //端口配置
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;       //推挽输出
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;      //IO口速度为50MHz
-    GPIO_Init(GPIOA, &GPIO_InitStructure);				   //根据设定参数初始化GPIOA
+    VL53L0X_GPIO_INIT();
 
-    VL53L0X_Xshut_0 = 0;//失能VL53L0X
-
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8 ;	           //端口配置
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;       //推挽输出
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;      //IO口速度为50MHz
-    GPIO_Init(GPIOA, &GPIO_InitStructure);				   //根据设定参数初始化GPIOA
-
-    VL53L0X_Xshut_1 = 0;
-    
     vTaskDelay(30);
 
     for (cnt = 0; cnt < VL53L0X_DEVS_NUM; ++cnt)
@@ -77,16 +77,16 @@ void VL53L0X_begin(void)
         {
             if (cnt == 0)
             {
-                VL53L0X_Xshut_0 = 1; 
+                VL53L0X_XSHUT_0 = 1; 
             }
             else
             {
-                VL53L0X_Xshut_1 = 1;
+                VL53L0X_XSHUT_1 = 1;
             }
             
             vTaskDelay(50);            
             
-            if (VL53L0X_ERROR_NONE  == vl53l0x_init(&VL53L0XDevs[cnt], g_DevsAddr[cnt]))
+            if (VL53L0X_ERROR_NONE  == vl53l0x_init(&VL53L0XDevs[cnt], VL53L0X_DEFAULT_ADDR + (cnt + 1) * 2))
             {
                 LOGD("Init device %d success", cnt);
                 break;
@@ -98,7 +98,7 @@ void VL53L0X_begin(void)
         vTaskDelay(1000);        
     }
     
-    LOGD("VL53L0X error");
+    LOGD("VL53L0X begin init finish");
     return ;
 }
 
@@ -179,11 +179,14 @@ void vl53l0x_reset(VL53L0X_Dev_t *dev)
 {
 	uint8_t addr;
 	addr = dev->I2cDevAddr;//保存设备原I2C地址
-  VL53L0X_Xshut_0=0;//失能VL53L0X
+
+    VL53L0X_XSHUT_0 = 0;//失能VL53L0X
 	delay_ms(30);
-	VL53L0X_Xshut_0=1;//使能VL53L0X,让传感器处于工作(I2C地址会恢复默认0X52)
+    
+	VL53L0X_XSHUT_0 = 1;//使能VL53L0X,让传感器处于工作(I2C地址会恢复默认0X52)
 	delay_ms(30);	
-	dev->I2cDevAddr=0x52;
+
+    dev->I2cDevAddr = VL53L0X_DEFAULT_ADDR;
 	vl53l0x_Addr_set(dev,addr);//设置VL53L0X传感器原来上电前原I2C地址
 	VL53L0X_DataInit(dev);	
 }
@@ -193,10 +196,10 @@ void vl53l0x_reset(VL53L0X_Dev_t *dev)
 VL53L0X_Error vl53l0x_init(VL53L0X_Dev_t *pMyDevice, u8 addr)
 {
     LOGD("5310 init start");
-    u8 mode = Default_Mode;
+    u8 mode = DEFAULT_MODE;
     VL53L0X_Error Status = VL53L0X_ERROR_NONE;
 
-    pMyDevice->I2cDevAddr = VL53L0X_Addr;//I2C地址(上电默认0x52)
+    pMyDevice->I2cDevAddr = VL53L0X_DEFAULT_ADDR;//I2C地址(上电默认0x52)
     pMyDevice->comms_type = 1;           //I2C通信模式
     pMyDevice->comms_speed_khz = 400;    //I2C通信速率
 
@@ -215,10 +218,6 @@ VL53L0X_Error vl53l0x_init(VL53L0X_Dev_t *pMyDevice, u8 addr)
         goto error;
     }
     delay_ms(10);
-
-    //不是必须的
-    //	Status = VL53L0X_GetDeviceInfo(pMyDevice,&vl53l0x_dev_info);//获取设备ID信息
-    //  if(Status!=VL53L0X_ERROR_NONE) goto error;
 
     Status =vl53l0x_set_mode(pMyDevice,mode);//配置精度模式
     if(Status!=VL53L0X_ERROR_NONE) 
@@ -322,21 +321,28 @@ static void NVIC_Configuration()
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;        //子优先级：1
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;           //使能中断通道
     NVIC_Init(&NVIC_InitStructure);
+
+    NVIC_InitStructure.NVIC_IRQChannel = EXTI15_10_IRQn;
+    NVIC_Init(&NVIC_InitStructure);
 }
 
 //中断配置初始化
 static void exti_init(void)
 {
 
-    GPIO_InitTypeDef GPIO_InitStructure;                      //定义GPIO_InitTypeDef结构体
+    GPIO_InitTypeDef GPIO_InitStructure;                      
 
     RCC_APB2PeriphClockCmd( RCC_APB2Periph_GPIOA | \
-                            RCC_APB2Periph_AFIO, ENABLE);     //开启GPIOB和复用功能时钟                   
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;                 //选择GPIO_Pin_8
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;             //选择上拉输入模式
-    GPIO_Init(GPIOB, &GPIO_InitStructure);                    //初始化以上参数
+                            RCC_APB2Periph_AFIO, ENABLE);     
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;                 
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;             
+    GPIO_Init(GPIOA, &GPIO_InitStructure); 
+
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;                             
+    GPIO_Init(GPIOA, &GPIO_InitStructure);  
 
     GPIO_EXTILineConfig(GPIO_PortSourceGPIOA, GPIO_PinSource5); //选择EXTI信号源
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOA, GPIO_PinSource11); //选择EXTI信号源
     
     EXTI_InitTypeDef EXTI_InitStructure;                                                                                            
     EXTI_InitStructure.EXTI_Line = EXTI_Line5;               //中断线选择
@@ -345,21 +351,89 @@ static void exti_init(void)
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;                //使能中断
     EXTI_Init(&EXTI_InitStructure); 
 
+    EXTI_InitStructure.EXTI_Line = EXTI_Line11;               //中断线选择
+    EXTI_Init(&EXTI_InitStructure); 
+
     NVIC_Configuration();
 }
 
 //外部中断服务函数
 void EXTI9_5_IRQHandler(void)
 {
-    //LOGD("1");
-
     if(EXTI_GetITStatus(EXTI_Line5)!= RESET)  
     { 
-        alarm_flag=1;//标志
+        g_aucAlarmFlag[0]=1;//标志
         //清除LINE5上的中断标志位 
         EXTI_ClearITPendingBit(EXTI_Line5);
-        //LOGD("2");
     }
+}
+
+//外部中断服务函数
+void EXTI15_10_IRQHandler(void)
+{
+    if(EXTI_GetITStatus(EXTI_Line11)!= RESET)  
+    { 
+        g_aucAlarmFlag[1]=1;//标志
+        //清除LINE5上的中断标志位 
+        EXTI_ClearITPendingBit(EXTI_Line11);
+    }
+}
+
+
+void VL53L0X_SET_CONTINUOUS_MODE(VL53L0X_Dev_t *dev, u8 mode)
+{
+    VL53L0X_Error status = VL53L0X_ERROR_NONE;//工作状态
+
+    status = VL53L0X_SetDeviceMode(dev,VL53L0X_DEVICEMODE_CONTINUOUS_RANGING);//使能连续测量模式
+    if(status!=VL53L0X_ERROR_NONE) goto error;
+    delay_ms(2);
+    status = VL53L0X_SetInterMeasurementPeriodMilliSeconds(dev,Mode_data[mode].timingBudget);//设置内部周期测量时间
+    if(status!=VL53L0X_ERROR_NONE) goto error;
+    delay_ms(2);
+    status = VL53L0X_SetLimitCheckEnable(dev,VL53L0X_CHECKENABLE_SIGMA_FINAL_RANGE,1);//使能SIGMA范围检查
+    if(status!=VL53L0X_ERROR_NONE) goto error;
+    delay_ms(2);
+    status = VL53L0X_SetLimitCheckEnable(dev,VL53L0X_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE,1);//使能信号速率范围检查
+    if(status!=VL53L0X_ERROR_NONE) goto error;
+    delay_ms(2);
+    status = VL53L0X_SetLimitCheckValue(dev,VL53L0X_CHECKENABLE_SIGMA_FINAL_RANGE,Mode_data[mode].sigmaLimit);//设定SIGMA范围
+    if(status!=VL53L0X_ERROR_NONE) goto error;
+    delay_ms(2); 
+    status = VL53L0X_SetLimitCheckValue(dev,VL53L0X_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE,Mode_data[mode].signalLimit);//设定信号速率范围范围
+    if(status!=VL53L0X_ERROR_NONE) goto error; 
+    delay_ms(2);
+    status = VL53L0X_SetMeasurementTimingBudgetMicroSeconds(dev,Mode_data[mode].timingBudget);//设定完整测距最长时间
+    if(status!=VL53L0X_ERROR_NONE) goto error;
+    delay_ms(2); 
+    status = VL53L0X_SetVcselPulsePeriod(dev, VL53L0X_VCSEL_PERIOD_PRE_RANGE, Mode_data[mode].preRangeVcselPeriod);//设定VCSEL脉冲周期
+    if(status!=VL53L0X_ERROR_NONE) goto error;
+    delay_ms(2);
+    //设定VCSEL脉冲周期范围
+    status = VL53L0X_SetVcselPulsePeriod(dev, VL53L0X_VCSEL_PERIOD_FINAL_RANGE, Mode_data[mode].finalRangeVcselPeriod);
+    if(status!=VL53L0X_ERROR_NONE) goto error;
+    delay_ms(2);
+    status = VL53L0X_StopMeasurement(dev);//停止测量
+    if(status!=VL53L0X_ERROR_NONE) goto error;
+    delay_ms(2);
+    status = VL53L0X_SetInterruptThresholds(dev,VL53L0X_DEVICEMODE_CONTINUOUS_RANGING, 60<<16, 150<<16);//设定触发中断上、下限值
+    if(status!=VL53L0X_ERROR_NONE) goto error;
+    delay_ms(2);
+    status = VL53L0X_SetGpioConfig(dev,0,VL53L0X_DEVICEMODE_CONTINUOUS_RANGING,VL53L0X_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_OUT,
+    VL53L0X_INTERRUPTPOLARITY_LOW);//设定触发中断模式 下降沿
+    if(status!=VL53L0X_ERROR_NONE) goto error;
+    delay_ms(2);
+    status = VL53L0X_ClearInterruptMask(dev,0);//清除VL53L0X中断标志位
+
+    error://错误信息
+    if(status!=VL53L0X_ERROR_NONE)
+    {
+    print_pal_error(status);
+    return ;
+    }
+
+    VL53L0X_StartMeasurement(dev);//启动测量
+
+    return;
 }
 
 
@@ -368,79 +442,33 @@ void EXTI9_5_IRQHandler(void)
 //mode: 0:默认;1:高精度;2:长距离;3:高速
 void vl53l0x_interrupt_start(VL53L0X_Dev_t *dev)
 {
-    uint8_t mode = 0;
-    VL53L0X_Error status=VL53L0X_ERROR_NONE;//工作状态
 
     exti_init();//中断初始化
-    LED0=1;
 
-	 status = VL53L0X_SetDeviceMode(dev,VL53L0X_DEVICEMODE_CONTINUOUS_RANGING);//使能连续测量模式
-	 if(status!=VL53L0X_ERROR_NONE) goto error;
-	 delay_ms(2);
-	 status = VL53L0X_SetInterMeasurementPeriodMilliSeconds(dev,Mode_data[mode].timingBudget);//设置内部周期测量时间
-	 if(status!=VL53L0X_ERROR_NONE) goto error;
-	 delay_ms(2);
-	 status = VL53L0X_SetLimitCheckEnable(dev,VL53L0X_CHECKENABLE_SIGMA_FINAL_RANGE,1);//使能SIGMA范围检查
-	 if(status!=VL53L0X_ERROR_NONE) goto error;
-	 delay_ms(2);
-	 status = VL53L0X_SetLimitCheckEnable(dev,VL53L0X_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE,1);//使能信号速率范围检查
-	 if(status!=VL53L0X_ERROR_NONE) goto error;
-	 delay_ms(2);
-	 status = VL53L0X_SetLimitCheckValue(dev,VL53L0X_CHECKENABLE_SIGMA_FINAL_RANGE,Mode_data[mode].sigmaLimit);//设定SIGMA范围
-	 if(status!=VL53L0X_ERROR_NONE) goto error;
-	 delay_ms(2); 
-	 status = VL53L0X_SetLimitCheckValue(dev,VL53L0X_CHECKENABLE_SIGNAL_RATE_FINAL_RANGE,Mode_data[mode].signalLimit);//设定信号速率范围范围
-	 if(status!=VL53L0X_ERROR_NONE) goto error; 
-	 delay_ms(2);
-	 status = VL53L0X_SetMeasurementTimingBudgetMicroSeconds(dev,Mode_data[mode].timingBudget);//设定完整测距最长时间
-	 if(status!=VL53L0X_ERROR_NONE) goto error;
-	 delay_ms(2); 
-	 status = VL53L0X_SetVcselPulsePeriod(dev, VL53L0X_VCSEL_PERIOD_PRE_RANGE, Mode_data[mode].preRangeVcselPeriod);//设定VCSEL脉冲周期
-	 if(status!=VL53L0X_ERROR_NONE) goto error;
-	 delay_ms(2);
-     //设定VCSEL脉冲周期范围
-	 status = VL53L0X_SetVcselPulsePeriod(dev, VL53L0X_VCSEL_PERIOD_FINAL_RANGE, Mode_data[mode].finalRangeVcselPeriod);
-	 if(status!=VL53L0X_ERROR_NONE) goto error;
-	 delay_ms(2);
-	 status = VL53L0X_StopMeasurement(dev);//停止测量
-	 if(status!=VL53L0X_ERROR_NONE) goto error;
-	 delay_ms(2);
-	 status = VL53L0X_SetInterruptThresholds(dev,VL53L0X_DEVICEMODE_CONTINUOUS_RANGING, 60<<16, 150<<16);//设定触发中断上、下限值
-	 if(status!=VL53L0X_ERROR_NONE) goto error;
-	 delay_ms(2);
-	 status = VL53L0X_SetGpioConfig(dev,0,VL53L0X_DEVICEMODE_CONTINUOUS_RANGING,VL53L0X_GPIOFUNCTIONALITY_THRESHOLD_CROSSED_OUT,
-VL53L0X_INTERRUPTPOLARITY_LOW);//设定触发中断模式 下降沿
-	 if(status!=VL53L0X_ERROR_NONE) goto error;
-	 delay_ms(2);
-	 status = VL53L0X_ClearInterruptMask(dev,0);//清除VL53L0X中断标志位
-	 
-	 error://错误信息
-	 if(status!=VL53L0X_ERROR_NONE)
-	 {
-		print_pal_error(status);
-		return ;
-	 }
+    for (int i = 0; i < VL53L0X_DEVS_NUM; ++i)
+        VL53L0X_SET_CONTINUOUS_MODE(&dev[i], DEFAULT_MODE);
 
-	 alarm_flag = 0;
-	 VL53L0X_StartMeasurement(dev);//启动测量
-	 while(1)
-	 {  
+    memset(g_aucAlarmFlag, 0, sizeof(g_aucAlarmFlag));    
+
+    while(1)
+    {  
         TickType_t cur_time = xTaskGetTickCount();
-        const portTickType xFrequency = pdMS_TO_TICKS(20);
+        const portTickType xFrequency = pdMS_TO_TICKS(20); //采样周期 1/20 = 50ms
 
-		if(alarm_flag==1)//触发中断
-		{
-			alarm_flag=0;
-			VL53L0X_GetRangingMeasurementData(dev,&vl53l0x_data);//获取测量距离,并且显示距离
-			LOGD("d: %3d mm",vl53l0x_data.RangeMilliMeter);
-			vTaskDelay(1);
-			VL53L0X_ClearInterruptMask(dev,0);//清除VL53L0X中断标志位 
-		}
+        for (int i = 0; i < VL53L0X_DEVS_NUM; ++i)
+        {
+            if(g_aucAlarmFlag[i] == 1)//触发中断
+            {
+                g_aucAlarmFlag[i] = 0;
+                VL53L0X_GetRangingMeasurementData(&dev[i],&vl53l0x_data);//获取测量距离,并且显示距离
+                LOGD("dev %d : %3d mm", i, vl53l0x_data.RangeMilliMeter);
+                vTaskDelay(1);
+                VL53L0X_ClearInterruptMask(&dev[i],0);//清除VL53L0X中断标志位 
+            }        
+        }
 
-		//采样周期 1/20 = 50ms
         vTaskDelayUntil(&cur_time, xFrequency);
-	 }
-		
+    }
 }
 
 
@@ -451,9 +479,5 @@ VL53L0X_INTERRUPTPOLARITY_LOW);//设定触发中断模式 下降沿
 //mode模式配置 0:默认;1:高精度;2:长距离
 void vl53l0x_general_start(void)
 {
-    VL53L0X_Error Status=VL53L0X_ERROR_NONE;//工作状态
-    Status = vl53l0x_start_single_test(&VL53L0XDevs[1],&vl53l0x_data);//执行一次测量
-    printf("time:%d distance: %4dmm\r\n", xTaskGetTickCount(), Distance_data);//打印测量距离
-
     vl53l0x_interrupt_start(VL53L0XDevs);
 }

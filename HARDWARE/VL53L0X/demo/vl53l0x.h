@@ -7,14 +7,15 @@
 #include "delay.h"
 #include "led.h"
 //sensors numbers
-//#define NUM_RANGEFINDERS 4
+#define VL53L0X_DEVS_NUM 2
+
 
 //VL53L0X传感器上电默认IIC地址为0X52(不包含最低位)
-#define VL53L0X_Addr 0x52
+#define VL53L0X_DEFAULT_ADDR 0x52
 
 //控制Xshut电平,从而使能VL53L0X工作 1:使能 0:关闭
-#define VL53L0X_Xshut_0 PAout(4)	
-#define VL53L0X_Xshut_1 PAout(8)	
+#define VL53L0X_XSHUT_0 PAout(4)	
+#define VL53L0X_XSHUT_1 PAout(8)	
 
 
 //使能2.8V IO电平模式
@@ -23,7 +24,7 @@
 //VL53L0X_Dev_t VL53L0XDevs[NUM_RANGEFINDERS];
 
 //测量模式
-#define Default_Mode   0// 默认
+#define DEFAULT_MODE   0// 默认
 #define HIGH_ACCURACY  1//高精度
 #define LONG_RANGE     2//长距离
 #define HIGH_SPEED     3//高速
@@ -36,7 +37,6 @@ typedef __packed struct
 	uint32_t timingBudget;         //采样时间周期
 	uint8_t preRangeVcselPeriod ;  //VCSEL脉冲周期
 	uint8_t finalRangeVcselPeriod ;//VCSEL脉冲周期范围
-	
 }mode_data;
 
 
