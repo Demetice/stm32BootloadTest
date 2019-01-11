@@ -82,8 +82,6 @@ void led0_task(void *pvParameters)
     {
         LED1=~LED1;
         LOGD("hello world");
-        LOGE("EEEEE");
-        LOGW("WWWWW");
         vTaskDelay(5000);
     }
 }   

@@ -3,11 +3,12 @@
 #include "stm32f10x_exti.h"
 
 #define MAX_FAILED_TIMES 0xffffffff
-
+#define VL53L0X_DEVS_NUM 2
 
 VL53L0X_DeviceInfo_t vl53l0x_dev_info;//设备ID版本信息
 
-VL53L0X_Dev_t VL53L0XDevs[1];//设备I2C数据参数
+VL53L0X_Dev_t VL53L0XDevs[VL53L0X_DEVS_NUM];//设备I2C数据参数
+u8 g_DevsAddr[VL53L0X_DEVS_NUM] = {0x54, 0x56};
 
 VL53L0X_RangingMeasurementData_t vl53l0x_data;//测距测量结构体
 
@@ -60,17 +61,41 @@ void VL53L0X_begin(void)
     GPIO_Init(GPIOA, &GPIO_InitStructure);				   //根据设定参数初始化GPIOA
 
     VL53L0X_Xshut_0 = 0;//失能VL53L0X
-    delay_ms(30);
 
-    for (cnt = 0; cnt < MAX_FAILED_TIMES; ++cnt)
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8 ;	           //端口配置
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;       //推挽输出
+    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;      //IO口速度为50MHz
+    GPIO_Init(GPIOA, &GPIO_InitStructure);				   //根据设定参数初始化GPIOA
+
+    VL53L0X_Xshut_1 = 0;
+    
+    vTaskDelay(30);
+
+    for (cnt = 0; cnt < VL53L0X_DEVS_NUM; ++cnt)
     {
-        rtn = vl53l0x_init();
-        if (rtn == VL53L0X_ERROR_NONE)
+        while(1)
         {
-            return ;            
+            if (cnt == 0)
+            {
+                VL53L0X_Xshut_0 = 1; 
+            }
+            else
+            {
+                VL53L0X_Xshut_1 = 1;
+            }
+            
+            vTaskDelay(50);            
+            
+            if (VL53L0X_ERROR_NONE  == vl53l0x_init(&VL53L0XDevs[cnt], g_DevsAddr[cnt]))
+            {
+                LOGD("Init device %d success", cnt);
+                break;
+            }
+
+            LOGD("Init vl5310x dev %d error", cnt);
+            vTaskDelay(1000);
         }
-        LOGD("Init vl5310x error :%d", rtn);
-        vTaskDelay(1000);
+        vTaskDelay(1000);        
     }
     
     LOGD("VL53L0X error");
@@ -107,6 +132,7 @@ VL53L0X_Error vl53l0x_Addr_set(VL53L0X_Dev_t *dev,uint8_t newaddr)
 	Status = VL53L0X_WrByte(dev,0x88,0x00);
 	if(Status!=VL53L0X_ERROR_NONE) 
 	{
+	    LOGD("Error in wrByte dev addr:%d", dev->I2cDevAddr);
 		sta=0x01;//设置I2C标准模式出错
 		goto set_error;
 	}
@@ -164,38 +190,47 @@ void vl53l0x_reset(VL53L0X_Dev_t *dev)
 
 //初始化vl53l0x
 //dev:设备I2C参数结构体
-VL53L0X_Error vl53l0x_init(void)
+VL53L0X_Error vl53l0x_init(VL53L0X_Dev_t *pMyDevice, u8 addr)
 {
+    LOGD("5310 init start");
     u8 mode = Default_Mode;
     VL53L0X_Error Status = VL53L0X_ERROR_NONE;
-    VL53L0X_Dev_t *pMyDevice = &VL53L0XDevs[0];
-
-    VL53L0X_Xshut_0=1; 
-
-    delay_ms(50);
 
     pMyDevice->I2cDevAddr = VL53L0X_Addr;//I2C地址(上电默认0x52)
     pMyDevice->comms_type = 1;           //I2C通信模式
     pMyDevice->comms_speed_khz = 400;    //I2C通信速率
 
 
-    vl53l0x_Addr_set(pMyDevice,0x54);//设置VL53L0X传感器I2C地址
-    if(Status!=VL53L0X_ERROR_NONE) goto error;
+    Status = vl53l0x_Addr_set(pMyDevice, addr);//设置VL53L0X传感器I2C地址
+    if(Status!=VL53L0X_ERROR_NONE) 
+    {
+        LOGD("Set address error %d", Status);
+        goto error;
+    }
 
     Status = VL53L0X_DataInit(pMyDevice);//设备初始化
-    if(Status!=VL53L0X_ERROR_NONE) goto error;
+    if(Status!=VL53L0X_ERROR_NONE) 
+    {
+        LOGD("datainit error %d", Status);
+        goto error;
+    }
     delay_ms(10);
 
     //不是必须的
     //	Status = VL53L0X_GetDeviceInfo(pMyDevice,&vl53l0x_dev_info);//获取设备ID信息
     //  if(Status!=VL53L0X_ERROR_NONE) goto error;
-    	
+
     Status =vl53l0x_set_mode(pMyDevice,mode);//配置精度模式
-    if(Status!=VL53L0X_ERROR_NONE) goto error;
+    if(Status!=VL53L0X_ERROR_NONE) 
+    {
+        LOGD("Set mode error %d", Status);
+        goto error;
+    }
 
     error:
     if(Status!=VL53L0X_ERROR_NONE)
     {
+        LOGD("Error status");
     	print_pal_error(Status);//打印错误信息
     	return Status;
     } 	
@@ -253,7 +288,6 @@ VL53L0X_Error vl53l0x_set_mode(VL53L0X_Dev_t *dev,u8 mode)
 		return status;
 	 }
 	 return status;
-	
 }	
 
 //VL53L0X 单次距离测量函数
@@ -263,7 +297,11 @@ VL53L0X_Error vl53l0x_start_single_test(VL53L0X_Dev_t *dev,VL53L0X_RangingMeasur
 {
 	VL53L0X_Error status = VL53L0X_ERROR_NONE;
 	status = VL53L0X_PerformSingleRangingMeasurement(dev, pdata);//执行单次测距并获取测距测量数据
-	if(status !=VL53L0X_ERROR_NONE) return status;
+	if(status !=VL53L0X_ERROR_NONE)
+    {
+        LOGD("Single test errror");
+        return status;
+    }
 	Distance_data = pdata->RangeMilliMeter;//保存最近一次测距测量数据
 	
   return status;
@@ -330,8 +368,7 @@ void EXTI9_5_IRQHandler(void)
 //mode: 0:默认;1:高精度;2:长距离;3:高速
 void vl53l0x_interrupt_start(VL53L0X_Dev_t *dev)
 {
-    uint8_t mode = 3;
-    uint32_t refSpadCount;
+    uint8_t mode = 0;
     VL53L0X_Error status=VL53L0X_ERROR_NONE;//工作状态
 
     exti_init();//中断初始化
@@ -414,8 +451,9 @@ VL53L0X_INTERRUPTPOLARITY_LOW);//设定触发中断模式 下降沿
 //mode模式配置 0:默认;1:高精度;2:长距离
 void vl53l0x_general_start(void)
 {
-    //VL53L0X_Error Status=VL53L0X_ERROR_NONE;//工作状态
+    VL53L0X_Error Status=VL53L0X_ERROR_NONE;//工作状态
+    Status = vl53l0x_start_single_test(&VL53L0XDevs[1],&vl53l0x_data);//执行一次测量
+    printf("time:%d distance: %4dmm\r\n", xTaskGetTickCount(), Distance_data);//打印测量距离
+
     vl53l0x_interrupt_start(VL53L0XDevs);
-    //Status = vl53l0x_start_single_test(&VL53L0XDevs[0],&vl53l0x_data);//执行一次测量
-    //printf("time:%d distance: %4dmm\r\n", xTaskGetTickCount(), Distance_data);//打印测量距离
 }

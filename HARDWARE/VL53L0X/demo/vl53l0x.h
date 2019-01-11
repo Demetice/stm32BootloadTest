@@ -14,7 +14,7 @@
 
 //控制Xshut电平,从而使能VL53L0X工作 1:使能 0:关闭
 #define VL53L0X_Xshut_0 PAout(4)	
-#define VL53L0X_Xshut_1 PAout(5)	
+#define VL53L0X_Xshut_1 PAout(8)	
 
 
 //使能2.8V IO电平模式
@@ -44,7 +44,7 @@ extern mode_data Mode_data[];
 extern VL53L0X_RangingMeasurementData_t vl53l0x_data;
 
 
-VL53L0X_Error vl53l0x_init(void);//初始化vl53l0x
+VL53L0X_Error vl53l0x_init(VL53L0X_Dev_t *pMyDevice, u8 addr);
 VL53L0X_Error vl53l0x_Addr_set(VL53L0X_Dev_t *dev,uint8_t newaddr);
 void VL53L0X_begin(void);
 void print_pal_error(VL53L0X_Error Status);//错误信息打印
