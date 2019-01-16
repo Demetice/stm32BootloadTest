@@ -41,8 +41,6 @@ typedef __packed struct
 
 
 extern mode_data Mode_data[];
-extern VL53L0X_RangingMeasurementData_t vl53l0x_data;
-
 
 VL53L0X_Error vl53l0x_init(VL53L0X_Dev_t *pMyDevice, u8 addr);
 VL53L0X_Error vl53l0x_Addr_set(VL53L0X_Dev_t *dev,uint8_t newaddr);

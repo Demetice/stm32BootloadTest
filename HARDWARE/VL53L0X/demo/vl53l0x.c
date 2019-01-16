@@ -4,8 +4,6 @@
 
 VL53L0X_Dev_t VL53L0XDevs[VL53L0X_DEVS_NUM];//设备I2C数据参数
 
-VL53L0X_RangingMeasurementData_t vl53l0x_data;//测距测量结构体
-
 vu16 Distance_data=0;//保存测距数据
 
 u8 g_aucAlarmFlag[VL53L0X_DEVS_NUM] = 0;
@@ -442,6 +440,7 @@ void VL53L0X_SET_CONTINUOUS_MODE(VL53L0X_Dev_t *dev, u8 mode)
 //mode: 0:默认;1:高精度;2:长距离;3:高速
 void vl53l0x_interrupt_start(VL53L0X_Dev_t *dev)
 {
+    VL53L0X_RangingMeasurementData_t vl53l0x_data;//测距测量结构体
 
     exti_init();//中断初始化
 
@@ -459,19 +458,19 @@ void vl53l0x_interrupt_start(VL53L0X_Dev_t *dev)
         {
             if(g_aucAlarmFlag[i] == 1)//触发中断
             {
+                TickType_t tg = xTaskGetTickCount();
                 g_aucAlarmFlag[i] = 0;
                 VL53L0X_GetRangingMeasurementData(&dev[i],&vl53l0x_data);//获取测量距离,并且显示距离
                 LOGD("dev %d : %3d mm", i, vl53l0x_data.RangeMilliMeter);
-                vTaskDelay(1);
+                //vTaskDelay(1);
                 VL53L0X_ClearInterruptMask(&dev[i],0);//清除VL53L0X中断标志位 
+                LOGD("Read single 5310 sensor time is:%d", xTaskGetTickCount() - tg);
             }        
         }
 
         vTaskDelayUntil(&cur_time, xFrequency);
     }
 }
-
-
 
 
 //启动普通测量

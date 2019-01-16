@@ -41,6 +41,7 @@ int main(void)
     delay_init();	    				//延时函数初始化	  
     uart_init(115200);					//初始化串口
     LED_Init();		  					//初始化LED
+    UART4_Configuration();
 
      
     //创建开始任务
@@ -89,7 +90,14 @@ void led0_task(void *pvParameters)
 //创建VL53L0X_0任务
 void vl53l0x0_task(void *pvParameters)
 {
-    VL53L0X_i2c_init();//初始化VL53L0X的IIC
-    VL53L0X_begin();//初始化每个VL53L0X设备
-    vl53l0x_general_start();
+    while(1)
+    {
+        LED0=~LED0;
+        LOGD("hello world 0");
+        vTaskDelay(2000);
+    }
+
+    //VL53L0X_i2c_init();//初始化VL53L0X的IIC
+    //VL53L0X_begin();//初始化每个VL53L0X设备
+    //vl53l0x_general_start();
 }

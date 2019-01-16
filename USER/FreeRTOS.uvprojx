@@ -396,6 +396,11 @@
               <FileType>1</FileType>
               <FilePath>.\system_stm32f10x.c</FilePath>
             </File>
+            <File>
+              <FileName>uart4.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\uart4.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
