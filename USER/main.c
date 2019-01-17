@@ -6,7 +6,7 @@
 #include "task.h"
 #include "vl53l0x.h"
 #include "log.h"
-
+#include "msg.h"
 
 //任务优先级
 #define START_TASK_PRIO		1
@@ -41,7 +41,9 @@ int main(void)
     delay_init();	    				//延时函数初始化	  
     uart_init(115200);					//初始化串口
     LED_Init();		  					//初始化LED
-    UART4_Configuration();
+    //UART4_Configuration();
+
+    LinkListInit();
 
      
     //创建开始任务
@@ -79,22 +81,46 @@ void start_task(void *pvParameters)
 //LED0任务函数 
 void led0_task(void *pvParameters)
 {
-    while(1)
+    int msg = 0;
+    uint32_t value_len = 0;
+    char buffer[512];
+    QueueHandle_t handle = xQueueCreate(15, sizeof(MESSAGE_T));
+    message_queue_map(MSG_ID_RED_LED_ON, handle);
+    message_queue_map(MSG_ID_RED_LED_OFF, handle);
+    
+    while (1) 
     {
-        LED1=~LED1;
-        LOGD("hello world");
-        vTaskDelay(5000);
-    }
+        if (-1 != MessageRecv(handle, &msg, buffer, &value_len, sizeof(buffer))) 
+        {
+            switch (msg)
+            {
+                case MSG_ID_RED_LED_ON:
+                    LED1 = *(int *)buffer;
+                    break;
+                
+                case MSG_ID_RED_LED_OFF:
+                    LED1 = 0;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+    }    
 }   
 
 //创建VL53L0X_0任务
 void vl53l0x0_task(void *pvParameters)
 {
+    int led_state = 0;
+
     while(1)
     {
         LED0=~LED0;
         LOGD("hello world 0");
         vTaskDelay(2000);
+        led_state = !led_state;
+        MessageSend(MSG_ID_RED_LED_ON, &led_state, sizeof(int), MESSAGE_IS_VALUE);
     }
 
     //VL53L0X_i2c_init();//初始化VL53L0X的IIC

@@ -1,13 +1,39 @@
-#include "stm32f10x.h"
-#include "stm32f10x_usart.h"
-#include "log.h"
+ #include "uart4.h"
 
-#define WHEEL_ADP_USART_BAUD_RATE 57600
-#define USART_REC_LEN 256
+static u8 g_aucUsartRxBuf[UART4_REC_LEN];   
+static u16 g_usMsgLen = 0;
+static P_FUNC_HANDLE_UART_RECEIVE_DATA pfnUartReceiveDatahandle = NULL;
 
-static u8 g_aucUsartRxBuf[USART_REC_LEN];     
-static u16 g_usUsartRxState=0;     
-static u8 g_ucUartRxLen = 0;
+SemaphoreHandle_t g_Uart4RecDataSemaphore;
+
+
+void UART4_GetReceiveData(u16 *plen, u8 *data)
+{
+    if (plen && data)
+    {
+        *plen = g_usMsgLen;
+        memcpy(data, g_aucUsartRxBuf, g_usMsgLen);
+    }
+}
+
+
+void UART4_InitSemaphore(void)
+{
+    g_Uart4RecDataSemaphore = xSemaphoreCreateBinary();
+    assert_param(pdFALSE == g_Uart4RecDataSemaphore);    
+}
+
+//仅仅只供uart4 msg handle task 调用
+void UART4_ReceiveDataP()
+{
+    xSemaphoreTakeRecursive(g_Uart4RecDataSemaphore, portMAX_DELAY);
+}
+
+static void UART4_ReceiveDataV()
+{
+    xSemaphoreGiveFromISR(g_Uart4RecDataSemaphore, pdTRUE);
+}
+
 
 /*驱动轮连接的是PC10 PC11接口，是UART4
   这个函数是初始化相关的USART设置*/
@@ -58,7 +84,7 @@ void UART4_Configuration(void)
     DMA_InitStructure.DMA_PeripheralBaseAddr = (u32)&UART4->DR;  //DMA外设ADC基地址
     DMA_InitStructure.DMA_MemoryBaseAddr = (u32)g_aucUsartRxBuf;  //DMA内存基地址
     DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;  //数据传输方向，从外设读取发送到内存
-    DMA_InitStructure.DMA_BufferSize = USART_REC_LEN;  //DMA通道的DMA缓存的大小
+    DMA_InitStructure.DMA_BufferSize = UART4_REC_LEN;  //DMA通道的DMA缓存的大小
     DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;  //外设地址寄存器不变
     DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;  //内存地址寄存器递增
     DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;  //数据宽度为8位
@@ -68,29 +94,32 @@ void UART4_Configuration(void)
     DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;  //DMA通道x没有设置为内存到内存传输
     DMA_Init(DMA2_Channel3, &DMA_InitStructure);  //根据DMA_InitStruct中指定的参数初始化DMA的通道
     DMA_ClearFlag(DMA2_FLAG_GL3);
-    DMA_Cmd(DMA2_Channel3, ENABLE);  //正式驱动DMA传输    
+    DMA_Cmd(DMA2_Channel3, ENABLE);  //正式驱动DMA传输  
 }
 
-void UART4_Send_Byte(u8 Data) //发送一个字节；
+void UART4_Init()
 {
-    USART_SendData(UART4,Data);
-    while( USART_GetFlagStatus(UART4, USART_FLAG_TC) == RESET );
+    UART4_InitSemaphore();
+    UART4_Configuration();
+
 }
 
-void UART4_Send_Bytes(u8 *Data, u8 len) //发送字符串；
+
+void UART4_Send_Bytes(u8 *Data, u8 len) //发送；
 {
     int i;
 
     for(i = 0; i < len; i++)
     {
-        UART4_Send_Byte(Data[i]);
+        USART_SendData(UART4,Data);
+        while( USART_GetFlagStatus(UART4, USART_FLAG_TC) == RESET );
     }
 }
 
 void UART4DmaClr(void)
 {
     DMA_Cmd(DMA2_Channel3, DISABLE);
-    DMA_SetCurrDataCounter(DMA2_Channel3, USART_REC_LEN);
+    DMA_SetCurrDataCounter(DMA2_Channel3, UART4_REC_LEN);
     DMA_ClearFlag(DMA2_FLAG_GL3);
     DMA_Cmd(DMA2_Channel3, ENABLE);
 }
@@ -101,9 +130,11 @@ void UART4_IRQHandler(void) //中断处理函数；
     if(USART_GetITStatus(UART4, USART_IT_IDLE) == SET) //判断是否发生中断；
     {
         USART_ReceiveData(UART4);
-        g_ucUartRxLen = USART_REC_LEN - DMA_GetCurrDataCounter(DMA2_Channel3); //算出接本帧数据长度
-        LOGD("receive data by dma len:%u", g_ucUartRxLen);
-        UART4_Send_Bytes(g_aucUsartRxBuf, g_ucUartRxLen);
+        g_usMsgLen = UART4_REC_LEN - DMA_GetCurrDataCounter(DMA2_Channel3); //算出接本帧数据长度
+
+        //UART4_Send_Bytes(g_aucUsartRxBuf, len);
+        //释放数据接收完毕信号，不在中断里面处理数据解析
+        UART4_ReceiveDataV();
 
         USART_ClearITPendingBit(UART4, USART_IT_IDLE);         //清除中断标志
         UART4DmaClr();                   //恢复DMA指针，等待下一次的接收
