@@ -28,10 +28,8 @@ typedef enum
 {
     MSG_ID_NULL = 0,
 
-    MSG_ID_RED_LED_ON,
-    MSG_ID_RED_LED_OFF,
-    MSG_ID_GREEN_LED_ON,
-    MSG_ID_GREEN_LED_OFF,
+    MSG_ID_WHEEL_STATE,
+    MSG_ID_RED_LED_CONTROL,
 
     //here add your msg id
 

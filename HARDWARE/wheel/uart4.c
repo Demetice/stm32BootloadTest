@@ -1,38 +1,7 @@
- #include "uart4.h"
+#include "uart4.h"
+#include "msg.h"
 
-static u8 g_aucUsartRxBuf[UART4_REC_LEN];   
-static u16 g_usMsgLen = 0;
-static P_FUNC_HANDLE_UART_RECEIVE_DATA pfnUartReceiveDatahandle = NULL;
-
-SemaphoreHandle_t g_Uart4RecDataSemaphore;
-
-
-void UART4_GetReceiveData(u16 *plen, u8 *data)
-{
-    if (plen && data)
-    {
-        *plen = g_usMsgLen;
-        memcpy(data, g_aucUsartRxBuf, g_usMsgLen);
-    }
-}
-
-
-void UART4_InitSemaphore(void)
-{
-    g_Uart4RecDataSemaphore = xSemaphoreCreateBinary();
-    assert_param(pdFALSE == g_Uart4RecDataSemaphore);    
-}
-
-//仅仅只供uart4 msg handle task 调用
-void UART4_ReceiveDataP()
-{
-    xSemaphoreTakeRecursive(g_Uart4RecDataSemaphore, portMAX_DELAY);
-}
-
-static void UART4_ReceiveDataV()
-{
-    xSemaphoreGiveFromISR(g_Uart4RecDataSemaphore, pdTRUE);
-}
+UART4_MSG_S g_stUart4Msg;
 
 
 /*驱动轮连接的是PC10 PC11接口，是UART4
@@ -67,11 +36,11 @@ void UART4_Configuration(void)
     //收发模式；
     USART_Init(UART4, &USART_InitStructure);//配置串口参数；
 
-    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2); //设置中断组，4位抢占优先级，4位响应优先级；
+    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4); //设置中断组，4位抢占优先级，4位响应优先级；
 
     NVIC_InitStructure.NVIC_IRQChannel = UART4_IRQn; //中断号；
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3; //抢占优先级；
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3; //响应优先级；
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 7; //抢占优先级；
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1; //响应优先级；
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
 
@@ -82,7 +51,7 @@ void UART4_Configuration(void)
       //相应的DMA配置
     DMA_DeInit(DMA2_Channel3);   //将DMA的通道5寄存器重设为缺省值  串口1对应的是DMA通道5
     DMA_InitStructure.DMA_PeripheralBaseAddr = (u32)&UART4->DR;  //DMA外设ADC基地址
-    DMA_InitStructure.DMA_MemoryBaseAddr = (u32)g_aucUsartRxBuf;  //DMA内存基地址
+    DMA_InitStructure.DMA_MemoryBaseAddr = (u32)g_stUart4Msg.buf;  //DMA内存基地址
     DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;  //数据传输方向，从外设读取发送到内存
     DMA_InitStructure.DMA_BufferSize = UART4_REC_LEN;  //DMA通道的DMA缓存的大小
     DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;  //外设地址寄存器不变
@@ -99,9 +68,7 @@ void UART4_Configuration(void)
 
 void UART4_Init()
 {
-    UART4_InitSemaphore();
     UART4_Configuration();
-
 }
 
 
@@ -111,7 +78,7 @@ void UART4_Send_Bytes(u8 *Data, u8 len) //发送；
 
     for(i = 0; i < len; i++)
     {
-        USART_SendData(UART4,Data);
+        USART_SendData(UART4,*Data);
         while( USART_GetFlagStatus(UART4, USART_FLAG_TC) == RESET );
     }
 }
@@ -127,14 +94,16 @@ void UART4DmaClr(void)
 //结束标记0d 0a
 void UART4_IRQHandler(void) //中断处理函数；
 {    
+    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+
     if(USART_GetITStatus(UART4, USART_IT_IDLE) == SET) //判断是否发生中断；
     {
         USART_ReceiveData(UART4);
-        g_usMsgLen = UART4_REC_LEN - DMA_GetCurrDataCounter(DMA2_Channel3); //算出接本帧数据长度
+        g_stUart4Msg.len = UART4_REC_LEN - DMA_GetCurrDataCounter(DMA2_Channel3); //算出接本帧数据长度
 
         //UART4_Send_Bytes(g_aucUsartRxBuf, len);
         //释放数据接收完毕信号，不在中断里面处理数据解析
-        UART4_ReceiveDataV();
+        MessageSendFromISR(MSG_ID_WHEEL_STATE, (uint32_t)&g_stUart4Msg, &xHigherPriorityTaskWoken);
 
         USART_ClearITPendingBit(UART4, USART_IT_IDLE);         //清除中断标志
         UART4DmaClr();                   //恢复DMA指针，等待下一次的接收

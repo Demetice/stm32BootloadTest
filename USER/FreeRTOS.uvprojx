@@ -337,7 +337,7 @@
               <MiscControls></MiscControls>
               <Define>STM32F10X_HD,USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
-              <IncludePath>..\USER;..\CORE;..\STM32F10x_FWLib\inc;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\usart;..\HARDWARE\LED;..\FreeRTOS\include;..\FreeRTOS\portable\RVDS\ARM_CM3;..\HARDWARE\VL53L0X\core;..\HARDWARE\VL53L0X\demo;..\HARDWARE\VL53L0X\platform;..\common</IncludePath>
+              <IncludePath>..\USER;..\CORE;..\STM32F10x_FWLib\inc;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\usart;..\HARDWARE\LED;..\FreeRTOS\include;..\FreeRTOS\portable\RVDS\ARM_CM3;..\HARDWARE\VL53L0X\core;..\HARDWARE\VL53L0X\demo;..\HARDWARE\VL53L0X\platform;..\common;..\HARDWARE\wheel</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -670,6 +670,21 @@
               <FileName>msg.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\common\msg.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>hardware/wheel</GroupName>
+          <Files>
+            <File>
+              <FileName>uart4.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\wheel\uart4.c</FilePath>
+            </File>
+            <File>
+              <FileName>wheel_drv_zlac706.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\wheel\wheel_drv_zlac706.c</FilePath>
             </File>
           </Files>
         </Group>
