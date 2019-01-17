@@ -30,6 +30,7 @@ typedef enum
 
     MSG_ID_WHEEL_STATE,
     MSG_ID_RED_LED_CONTROL,
+    MSG_ID_MOTOR_SPEED,
 
     //here add your msg id
 

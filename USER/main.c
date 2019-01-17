@@ -97,7 +97,7 @@ void led0_task(void *pvParameters)
             switch (msg)
             {
                 case MSG_ID_RED_LED_CONTROL:
-                    LED1 = *(int *)buffer;
+                    LED1 = *(int *)buffer;                
                     break;
 
                 case MSG_ID_WHEEL_STATE:
@@ -123,7 +123,7 @@ void vl53l0x0_task(void *pvParameters)
         LOGD("hello world 0");
         vTaskDelay(2000);
         led_state = !led_state;
-        MessageSend(MSG_ID_RED_LED_CONTROL, &led_state, sizeof(int), MESSAGE_IS_VALUE);
+        MessageSend(MSG_ID_RED_LED_CONTROL, &led_state, sizeof(int), MESSAGE_IS_POINTER);
     }
 
     //VL53L0X_i2c_init();//³õÊ¼»¯VL53L0XµÄIIC

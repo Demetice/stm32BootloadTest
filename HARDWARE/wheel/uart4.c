@@ -101,7 +101,6 @@ void UART4_IRQHandler(void) //中断处理函数；
         USART_ReceiveData(UART4);
         g_stUart4Msg.len = UART4_REC_LEN - DMA_GetCurrDataCounter(DMA2_Channel3); //算出接本帧数据长度
 
-        //UART4_Send_Bytes(g_aucUsartRxBuf, len);
         //释放数据接收完毕信号，不在中断里面处理数据解析
         MessageSendFromISR(MSG_ID_WHEEL_STATE, (uint32_t)&g_stUart4Msg, &xHigherPriorityTaskWoken);
 
