@@ -25,8 +25,8 @@ typedef unsigned char UCHAR;
                          (0x0000ff00 & (ULONG)(x)) << 8  | \
                          (0x000000ff & (ULONG)(x)) << 24)
  
-#define PUBLIC_HTONL(x) ((0xff00 & (SHORT)(x)) >> 8) | ((0xff & (SHORT)(x))<<8)
-#define PUBLIC_NTONH(x) ((0xff00 & (SHORT)(x)) >> 8) | ((0xff & (SHORT)(x))<<8)
+#define PUBLIC_HTONS(x) ((0xff00 & (SHORT)(x)) >> 8) | ((0xff & (SHORT)(x))<<8)
+#define PUBLIC_NTOHS(x) ((0xff00 & (SHORT)(x)) >> 8) | ((0xff & (SHORT)(x))<<8)
  
 #else
  

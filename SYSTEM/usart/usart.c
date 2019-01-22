@@ -32,30 +32,11 @@ int fputc(int ch, FILE *f)
 }
 #endif 
 
-/*使用microLib的方法*/
- /* 
-int fputc(int ch, FILE *f)
-{
-	USART_SendData(USART1, (uint8_t) ch);
-
-	while (USART_GetFlagStatus(USART1, USART_FLAG_TC) == RESET) {}	
-   
-    return ch;
-}
-int GetKey (void)  { 
-
-    while (!(USART1->SR & USART_FLAG_RXNE));
-
-    return ((int)(USART1->DR & 0x1FF));
-}
-*/
  
 #if EN_USART1_RX   //如果使能了接收
-//串口1中断服务程序
-//注意,读取USARTx->SR能避免莫名其妙的错误   	
-u8 USART_RX_BUF[USART_REC_LEN];     //接收缓冲,最大USART_REC_LEN个字节.
-u8 g_ucUsart1ReceiveDataLen;
-  
+UART_MSG_S g_stUart1Msg = {0};
+
+
 void uart_init(u32 bound){
     //GPIO端口设置
     GPIO_InitTypeDef GPIO_InitStructure;
@@ -103,7 +84,7 @@ void uart_init(u32 bound){
     DMA_DeInit(DMA1_Channel5);  
     
     DMA_InitStructure.DMA_PeripheralBaseAddr = (u32)(&USART1->DR);
-    DMA_InitStructure.DMA_MemoryBaseAddr = (u32)USART_RX_BUF;        
+    DMA_InitStructure.DMA_MemoryBaseAddr = (u32)g_stUart1Msg.buf;        
     DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;                    
     DMA_InitStructure.DMA_BufferSize = USART_REC_LEN;                     
     DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;       
@@ -144,15 +125,17 @@ void USART1DmaClr(void)
     DMA_Cmd(DMA1_Channel5, ENABLE);
 }
 
-//结束标记0d 0a
 void USART1_IRQHandler(void) //中断处理函数；
 {    
+    portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+
     if(USART_GetITStatus(USART1, USART_IT_IDLE) == SET) //判断是否发生中断；
     {
         USART_ReceiveData(USART1);
-        g_ucUsart1ReceiveDataLen = USART_REC_LEN - DMA_GetCurrDataCounter(DMA1_Channel5); //算出接本帧数据长度
-        printf("usart1 receive data by dma len:%u\r\n", g_ucUsart1ReceiveDataLen);
-        USART1_Send_Bytes(USART_RX_BUF, g_ucUsart1ReceiveDataLen);
+        g_stUart1Msg.len = USART_REC_LEN - DMA_GetCurrDataCounter(DMA1_Channel5); //算出接本帧数据长度
+        //printf("usart1 receive data by dma len:%u\r\n", g_ucUsart1ReceiveDataLen);
+        //USART1_Send_Bytes(USART_RX_BUF, g_ucUsart1ReceiveDataLen);
+        MessageSendFromISR(MSG_ID_USART1_DMA_RECEIVE, (uint32_t)&g_stUart1Msg, &xHigherPriorityTaskWoken);
 
         USART_ClearITPendingBit(USART1, USART_IT_IDLE);         //清除中断标志
         USART1DmaClr();                   //恢复DMA指针，等待下一次的接收

@@ -43,6 +43,7 @@ int main(void)
     LED_Init();		  					//初始化LED
     UART4_Configuration();
 
+    //初始时msg系统
     LinkListInit();
 
      
