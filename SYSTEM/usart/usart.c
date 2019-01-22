@@ -6,6 +6,7 @@
 #include "FreeRTOS.h"					//FreeRTOS使用	 	  
 #endif 
 
+#include "msg.h"
 //////////////////////////////////////////////////////////////////
 //加入以下代码,支持printf函数,而不需要选择use MicroLIB	  
 #if 1
