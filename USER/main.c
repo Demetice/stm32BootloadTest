@@ -121,8 +121,9 @@ void vl53l0x0_task(void *pvParameters)
     while(1)
     {
         LED0=~LED0;
+        PC5_TEST = ~PC5_TEST;
         LOGD("hello world 0");
-        vTaskDelay(2000);
+        vTaskDelay(1000);
         led_state = !led_state;
         MessageSend(MSG_ID_RED_LED_CONTROL, &led_state, sizeof(int), MESSAGE_IS_POINTER);
     }

@@ -39,6 +39,28 @@ typedef unsigned char UCHAR;
 #endif
 
 
+typedef enum 
+{
+    E_RTN_OK = 0,
+    E_RTN_NULL_PTR = 1,
+    E_RTN_MALLOC_FAIL = 2,
+    E_RTN_ERROR_PARAM = 3,
+    E_RTN_FATAL_ERROR = 4,
+
+    
+    E_RTN_BUTT
+}RTN_CODE_E;
+
+#define PUB_CHECK_PARAM_AND_RTN(x) if((x))\
+{\
+    LOGD("Error param");\
+    return E_RTN_ERROR_PARAM;\
+}
+
+#define PUB_CHECK_RESULT_AND_RTN(rtn, fmt, ...) if((rtn)){\
+    LOGD("error code:%d"##fmt, rtn, ##__VA_ARGS__);\
+    return rtn;
+}
 
 #endif
 
