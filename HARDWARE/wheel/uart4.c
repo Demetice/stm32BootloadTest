@@ -78,7 +78,7 @@ void UART4_Send_Bytes(u8 *Data, u8 len) //·¢ËÍ£»
 
     for(i = 0; i < len; i++)
     {
-        USART_SendData(UART4,*Data);
+        USART_SendData(UART4,Data[i]);
         while( USART_GetFlagStatus(UART4, USART_FLAG_TC) == RESET );
     }
 }

@@ -105,6 +105,7 @@ void led0_task(void *pvParameters)
                 case MSG_ID_WHEEL_STATE:
                     //pUart4Msg = ()(*(uint32_t*)buffer);
                     LOGD("rd %u, addr %u",*(uint32_t*)buffer, (u32)&g_stUart4Msg);
+                    UART4_Send_Bytes(g_stUart4Msg.buf, g_stUart4Msg.len);
                     break;
                 case MSG_ID_USART1_DMA_RECEIVE:
                     LOGD("receive msg len:%d is : %s", g_stUart1Msg.len, g_stUart1Msg.buf);
@@ -121,11 +122,13 @@ void led0_task(void *pvParameters)
 void vl53l0x0_task(void *pvParameters)
 {
     int led_state = 1;
-
+    u8 buff[20] = "1234\n";
+    
     while(1)
     {
         LED0=~LED0;
         LOGD("hello world 0");
+        UART4_Send_Bytes(buff, 5);
         vTaskDelay(3000);
         led_state = !led_state;
         MessageSend(MSG_ID_RED_LED_CONTROL, &led_state, sizeof(int), MESSAGE_IS_POINTER);
