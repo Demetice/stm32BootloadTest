@@ -62,5 +62,16 @@ typedef enum
     return rtn;
 }
 
+#define PUB_CHECK_RESULT_AND_RTN_VOID(rtn, fmt, ...) if((rtn)){\
+    LOGD("error code:%d"##fmt, rtn, ##__VA_ARGS__);\
+    return;
+}
+
+#define PUB_CHECK_MEMORY_ALLOC(rtn, fmt, ...) if((rtn)){\
+    LOGD("error in memory alloc:%d"##fmt, rtn, ##__VA_ARGS__);\
+    return;
+}
+
+
 #endif
 

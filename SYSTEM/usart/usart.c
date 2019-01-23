@@ -27,8 +27,8 @@ void _sys_exit(int x)
 //重定义fputc函数 
 int fputc(int ch, FILE *f)
 {      
-	while((UART4->SR&0X40)==0);//循环发送,直到发送完毕   
-    UART4->DR = (u8) ch;      
+	while((USART1->SR&0X40)==0);//循环发送,直到发送完毕   
+    USART1->DR = (u8) ch;      
 	return ch;
 }
 #endif 
@@ -61,8 +61,8 @@ void uart_init(u32 bound){
 
     //Usart1 NVIC 配置
     NVIC_InitStructure.NVIC_IRQChannel = USART1_IRQn;
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=3 ;//抢占优先级3
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;		//子优先级3
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority=7 ;//抢占优先级3
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;		//子优先级3
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;			//IRQ通道使能
     NVIC_Init(&NVIC_InitStructure);	//根据指定的参数初始化VIC寄存器
 
