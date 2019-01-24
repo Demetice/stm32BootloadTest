@@ -31,10 +31,10 @@ extern void xPortSysTickHandler(void);
 //systick中断服务函数,使用ucos时用到
 void SysTick_Handler(void)
 {	
-    if(xTaskGetSchedulerState()!=taskSCHEDULER_NOT_STARTED)//系统已经运行
-    {
-        xPortSysTickHandler();	
-    }
+//    if(xTaskGetSchedulerState()!=taskSCHEDULER_NOT_STARTED)//系统已经运行
+//    {
+//        xPortSysTickHandler();	
+//    }
 }
 			   
 //初始化延迟函数
@@ -47,15 +47,14 @@ void delay_init()
 	SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK);//选择外部时钟  HCLK
 	fac_us=SystemCoreClock/1000000;				//不论是否使用OS,fac_us都需要使用
 	reload=SystemCoreClock/1000000;				//每秒钟的计数次数 单位为M  
-	reload*=1000000/configTICK_RATE_HZ;			//根据configTICK_RATE_HZ设定溢出时间
+//	reload*=1000000/configTICK_RATE_HZ;			//根据configTICK_RATE_HZ设定溢出时间
 												//reload为24位寄存器,最大值:16777216,在72M下,约合0.233s左右	
-	fac_ms=1000/configTICK_RATE_HZ;				//代表OS可以延时的最少单位	   
+	//fac_ms=1000/configTICK_RATE_HZ;				//代表OS可以延时的最少单位	   
 
 	SysTick->CTRL|=SysTick_CTRL_TICKINT_Msk;   	//开启SYSTICK中断
 	SysTick->LOAD=reload; 						//每1/configTICK_RATE_HZ秒中断一次	
 	SysTick->CTRL|=SysTick_CTRL_ENABLE_Msk;   	//开启SYSTICK    
 }								    
-
 
 //延时nus
 //nus:要延时的us数.	
@@ -85,14 +84,14 @@ void delay_us(u32 nus)
 //nms:0~65535
 void delay_ms(u32 nms)
 {	
-	if(xTaskGetSchedulerState()!=taskSCHEDULER_NOT_STARTED)//系统已经运行
-	{		
-		if(nms>=fac_ms)						//延时的时间大于OS的最少时间周期 
-		{ 
-   			vTaskDelay(nms/fac_ms);	 		//FreeRTOS延时
-		}
-		nms%=fac_ms;						//OS已经无法提供这么小的延时了,采用普通方式延时    
-	}
+//	if(xTaskGetSchedulerState()!=taskSCHEDULER_NOT_STARTED)//系统已经运行
+//	{		
+//		if(nms>=fac_ms)						//延时的时间大于OS的最少时间周期 
+//		{ 
+//   			vTaskDelay(nms/fac_ms);	 		//FreeRTOS延时
+//		}
+//		nms%=fac_ms;						//OS已经无法提供这么小的延时了,采用普通方式延时    
+//	}
 	delay_us((u32)(nms*1000));				//普通方式延时
 }
 
@@ -103,10 +102,6 @@ void delay_xms(u32 nms)
 	u32 i;
 	for(i=0;i<nms;i++) delay_us(1000);
 }
-
-
-
-
 
 
 
