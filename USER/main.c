@@ -118,6 +118,7 @@ void led0_task(void *pvParameters)
     }    
 }   
 
+
 //创建VL53L0X_0任务
 void vl53l0x0_task(void *pvParameters)
 {
@@ -129,7 +130,7 @@ void vl53l0x0_task(void *pvParameters)
         LED0=~LED0;
         LOGD("hello world 0");
         UART4_Send_Bytes(buff, 5);
-        vTaskDelay(3000);
+        vTaskDelay(1000);
         led_state = !led_state;
         MessageSend(MSG_ID_RED_LED_CONTROL, &led_state, sizeof(int), MESSAGE_IS_POINTER);
     }

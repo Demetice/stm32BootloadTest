@@ -79,6 +79,7 @@ void delay_us(u32 nus)
 		}  
 	};										    
 }  
+
 //延时nms
 //nms:要延时的ms数
 //nms:0~65535

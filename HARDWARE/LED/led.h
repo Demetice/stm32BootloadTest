@@ -15,6 +15,8 @@
 ////////////////////////////////////////////////////////////////////////////////// 
 #define LED0 PCout(2)// PC2
 #define LED1 PCout(3)// PC3	
+#define LED_TEST PCout(5)// PC5
+
 
 void LED_Init(void);//≥ı ºªØ
 
