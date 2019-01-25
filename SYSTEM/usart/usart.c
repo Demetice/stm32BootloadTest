@@ -36,6 +36,7 @@ int fputc(int ch, FILE *f)
 #if EN_USART1_RX   //如果使能了接收
 UART_MSG_S g_stUart1Msg = {0};
 
+u8 g_aucBuff[2][2048];
 
 void uart_init(u32 bound){
     //GPIO端口设置
