@@ -686,6 +686,16 @@
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\wheel\wheel_drv_zlac706.c</FilePath>
             </File>
+            <File>
+              <FileName>uart3.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\wheel\uart3.c</FilePath>
+            </File>
+            <File>
+              <FileName>uart2.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\wheel\uart2.c</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>
