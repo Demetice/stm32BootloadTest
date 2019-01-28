@@ -128,7 +128,7 @@ void vl53l0x0_task(void *pvParameters)
     while(1)
     {
         LED0=~LED0;
-        LOGD("hello world 0");
+        LOGD("hello world 7788");
         UART4_Send_Bytes(buff, 5);
         vTaskDelay(1000);
         led_state = !led_state;
