@@ -110,6 +110,23 @@ typedef struct tagXXX
    }TOUCH_DATA_S;
    ```
 
+7. 里程计相关数据上报
+
+   ```c
+   cmd = 0x16;
+   type = 0;
+   
+   typedef struct tagOdometryData
+   {
+       float x_pos; //当前位置x 单位:mm
+       float y_pos; //当前位置y 单位：mm
+       float theta; //角度 theta 单位:rad
+       float line_speed; //线速度   单位：mm/s
+       float angle_speed; //角速度   单位：rad/s
+   }ODOMETRY_DATA_S;
+   ```
+
+
 
 ## 命令下发(上位机发给下位机)
 
@@ -173,6 +190,20 @@ typedef struct tagXXX
         unsigned char rsv[4]; //全部填0就可以，通过cmd就能辨别，这个预留位给后续扩展用
     }QUERY_MOTOR_S;
     ```
+
+6. 设置里程计原点
+
+   ```c
+   cmd = 0x35;
+   type = 0;
+   
+   typedef struct tagSetOdometryOrigin
+   {
+       
+   }SET_ODOMETRY_ORIGIN_S;
+   
+   ```
+
 
 ## 关于网络序编程说明
 

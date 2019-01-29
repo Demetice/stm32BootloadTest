@@ -90,6 +90,7 @@ void led0_task(void *pvParameters)
     QueueHandle_t handle = xQueueCreate(15, sizeof(MESSAGE_T));
     message_queue_map(MSG_ID_WHEEL_STATE, handle);
     message_queue_map(MSG_ID_RED_LED_CONTROL, handle);
+    message_queue_map(MSG_ID_USART1_DMA_RECEIVE, handle);
     
     while (1) 
     {
@@ -104,8 +105,12 @@ void led0_task(void *pvParameters)
                 case MSG_ID_WHEEL_STATE:
                     //pUart4Msg = ()(*(uint32_t*)buffer);
                     LOGD("rd %u, addr %u",*(uint32_t*)buffer, (u32)&g_stUart4Msg);
+                    UART4_Send_Bytes(g_stUart4Msg.buf, g_stUart4Msg.len);
                     break;
-                  
+                case MSG_ID_USART1_DMA_RECEIVE:
+                    LOGD("receive msg len:%d is : %s", g_stUart1Msg.len, g_stUart1Msg.buf);
+                    break;
+                    
                 default:
                     break;
             }
@@ -113,16 +118,19 @@ void led0_task(void *pvParameters)
     }    
 }   
 
+
 //创建VL53L0X_0任务
 void vl53l0x0_task(void *pvParameters)
 {
-    int led_state = 0;
-
+    int led_state = 1;
+    u8 buff[20] = "1234\n";
+    
     while(1)
     {
         LED0=~LED0;
-        LOGD("hello world 0");
-        vTaskDelay(2000);
+        LOGD("hello world 7788");
+        UART4_Send_Bytes(buff, 5);
+        vTaskDelay(1000);
         led_state = !led_state;
         MessageSend(MSG_ID_RED_LED_CONTROL, &led_state, sizeof(int), MESSAGE_IS_POINTER);
     }
