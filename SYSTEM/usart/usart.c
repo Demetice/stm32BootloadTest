@@ -26,8 +26,8 @@ void _sys_exit(int x)
 //重定义fputc函数 
 int fputc(int ch, FILE *f)
 {      
-	while((UART4->SR&0X40)==0);//循环发送,直到发送完毕   
-    UART4->DR = (u8) ch;      
+	while((USART1->SR&0X40)==0);//循环发送,直到发送完毕   
+    USART1->DR = (u8) ch;      
 	return ch;
 }
 #endif 
@@ -135,7 +135,7 @@ void USART1_IRQHandler(void) //中断处理函数；
         g_stUart1Msg.len = USART_REC_LEN - DMA_GetCurrDataCounter(DMA1_Channel5); //算出接本帧数据长度
         //printf("usart1 receive data by dma len:%u\r\n", g_ucUsart1ReceiveDataLen);
         //USART1_Send_Bytes(USART_RX_BUF, g_ucUsart1ReceiveDataLen);
-        MessageSendFromISR(MSG_ID_USART1_DMA_RECEIVE, (uint32_t)&g_stUart1Msg, &xHigherPriorityTaskWoken);
+//        MessageSendFromISR(MSG_ID_USART1_DMA_RECEIVE, (uint32_t)&g_stUart1Msg, &xHigherPriorityTaskWoken);
 
         USART_ClearITPendingBit(USART1, USART_IT_IDLE);         //清除中断标志
         USART1DmaClr();                   //恢复DMA指针，等待下一次的接收
