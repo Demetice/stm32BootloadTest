@@ -35,45 +35,42 @@ app 地址如下：
 
 1.  协议格式如下
 
-   ---------------------
+---------------------
 
-   | strart | len  | cmd  | ver  | STRUCT | chkSum        | end  |
-   | ------ | ---- | ---- | ---- | ------ | ------------- | ---- |
-   | 0x80   | -    | -    | -    | -      | 从start加到st | 0x0a |
+| strart | len  | cmd  | ver  | STRUCT | chkSum        | end  |
+| ------ | ---- | ---- | ---- | ------ | ------------- | ---- |
+| 0x80   | -    | -    | -    | -      | 从start加到st | 0x0a |
 
    长度（len)是从cmd 到end的长度，可以用于快速偏移，验证该数据包是不是命令包，结构体可以如下定义
 
    ```c
-   typedef struct tagYourStruct
-   {
-       //your struct
-   }YOUR_STRUCT_S;
-   
-   typedef struct tagCommondEnterIAP
-   {
-       u8 start;
-       u8 len;
-       u8 cmd;
-       u8 ver;
-       YOUR_STRUCT_S data;
-       u8 chkSum;	
-       u8 end;
-   }CMD_ENTER_IAP_S;
+typedef struct tagIapCmdHdr
+{
+    u8 start;
+    u8 len;
+    u8 cmd;
+    u8 ver;
+}IAP_CMD_HDR_S;
    ```
 
 2. 接收到下位机bootload启动后的指令发送(42 6F 6F 74 6C 6F 61 64 20 73 74 61 72 74 2E 0D 0A, 也就是"Bootload start.\r\n") 
 
 3. 进入下载模式
 
-   | start | len  | cmd  | ver  |      |      |
-   | ----- | ---- | ---- | ---- | ---- | ---- |
-   |       |      |      |      |      |      |
+   ```c
+   cmd  = 0x80;
+   ver = 0; 
+   
+   typedef tagEnterDownload
+   {
+   	u32 flieSize; //下载开始前预先告知文件大小， 所有的数据都是网络序，请注意字节序
+   	u32 crc32;    //告诉CRC32，
+   }
+   ```
 
-4. 
+4. 开始发送数据，分包发送。如果下位机不响应需要重发该包
 
-5. 开始发送数据，分包发送。如果下位机不响应需要重发该包
-
-6. 发送完成后发送结速指令，复位下位机
+5. 发送完成后发送结速指令，复位下位机
 
 通过USART1 波特率115200 串口获取数据，采用分包发送的模式给下位机发送数据，每个包需要带crc. 相邻两个包的发送间隔为n ms.
 
