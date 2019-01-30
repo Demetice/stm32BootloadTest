@@ -7,6 +7,8 @@
 #endif 
 #include "log.h"
 #include "iap.h"
+#include "led.h"
+#include "string.h"
 
 //////////////////////////////////////////////////////////////////
 //加入以下代码,支持printf函数,而不需要选择use MicroLIB	  
@@ -135,24 +137,11 @@ void USART1DmaClr(void)
 
 void USART1_IRQHandler(void) //中断处理函数；
 {    
-    static u32 offset = 0;
-
     if(USART_GetITStatus(USART1, USART_IT_IDLE) == SET) //判断是否发生中断；
     {
         USART_ReceiveData(USART1);
         g_stUart1Msg.len = USART_REC_LEN - DMA_GetCurrDataCounter(DMA1_Channel5); //算出接本帧数据长度
-
-        USART1_Send_Bytes(g_stUart1Msg.buf, g_stUart1Msg.len);
         
-        if (g_stUart1Msg.len == 3
-            && g_stUart1Msg.buf[0] == 0x32
-            && g_stUart1Msg.buf[1] == 0x0d
-            && g_stUart1Msg.buf[2] == 0x0a)
-        {
-            IAP_SetState(E_IAP_STATE_DOWNLOAD_COMPLETE);        
-            LOGD("Enter complete..");
-        }
-
         if (IAP_GetState() == E_IAP_STATE_NONE 
             && g_stUart1Msg.len == 3
             && g_stUart1Msg.buf[0] == 0x31
@@ -164,26 +153,21 @@ void USART1_IRQHandler(void) //中断处理函数；
         }
         else if (IAP_GetState() == E_IAP_STATE_DOWNLOADING)
         {
-            if (g_stUart1Msg.len + offset > FLASH_PAGE_SIZE)
+
+            if (g_stUart1Msg.len == 3
+                && g_stUart1Msg.buf[0] == 0x32
+                && g_stUart1Msg.buf[1] == 0x0d
+                && g_stUart1Msg.buf[2] == 0x0a)
             {
-                memcpy(g_aucBuff[curBufIdx] + offset, g_stUart1Msg.buf, FLASH_PAGE_SIZE - offset);
-                g_aucBuffLen[curBufIdx] = FLASH_PAGE_SIZE;
-                ++curBufIdx;
-                if (curBufIdx > 1)curBufIdx = 0;
-                memcpy(g_aucBuff[curBufIdx], 
-                    g_stUart1Msg.buf + FLASH_PAGE_SIZE - offset, 
-                    g_stUart1Msg.len + offset - FLASH_PAGE_SIZE);
-                offset = g_stUart1Msg.len + offset - FLASH_PAGE_SIZE;
-                g_aucBuffLen[curBufIdx] = offset;
+                IAP_SetState(E_IAP_STATE_DOWNLOAD_COMPLETE);        
+                LOGD("Enter complete..");
             }
             else
             {
-                memcpy(g_aucBuff[curBufIdx] + offset, g_stUart1Msg.buf, g_stUart1Msg.len);
-                offset += g_stUart1Msg.len;
-                g_aucBuffLen[curBufIdx] = offset;
+                IAP_WriteFlashBuf(g_stUart1Msg.buf, g_stUart1Msg.len);
             }
         }
-        
+        LED1 = ~LED1;
         USART_ClearITPendingBit(USART1, USART_IT_IDLE);         //清除中断标志
         USART1DmaClr();                   //恢复DMA指针，等待下一次的接收
     }  

@@ -17,8 +17,12 @@
 #define APP_END_ADDR    (uint32_t)0x08036FFF
 
 //OTA 缓存文件存放地址
-#define OTA_START_ADDR   ((uint32_t) 0x08037000)//写入的起始地址
-#define OTA_END_ADDR     ((uint32_t)0x08068FFF)//结束地址
+//#define OTA_START_ADDR   ((uint32_t) 0x08037000)//写入的起始地址
+//#define OTA_END_ADDR     ((uint32_t)0x08068FFF)//结束地址
+
+#define OTA_START_ADDR   APP_START_ADDR  //写入的起始地址
+#define OTA_END_ADDR     APP_END_ADDR    //结束地址
+
 
 //FLAG 起始地址
 #define FLAG_START_ADDR (uint32_t)0x08069000
@@ -47,6 +51,24 @@ typedef struct tagIapFlashBuff
     u32 addr;
 }IAP_FLASH_BUF_S;
 
+
+typedef struct tagIapCmdHdr
+{
+    u8 start;
+    u8 len;
+    u8 cmd;
+    u8 ver;
+}IAP_CMD_HDR_S;
+
+
+typedef struct tagIapCmdEnterDownloadMode
+{
+    IAP_CMD_HDR_S head;
+    u8 aursv[4]; //预留填全0
+    u8 chksum;
+    u8 end; // 0x0a
+}IAP_CMD_ENTER_DOWNLOAD_S;
+
 extern IAP_FLASH_BUF_S g_stIapBuf;
 
 extern void IAP_Init(void);
@@ -56,8 +78,9 @@ extern inline IAP_STATE_E IAP_GetState(void);
 extern void IAP_ResetMCU(void);
 extern void IAP_SetIapFlag(uint16_t flag);
 extern u16 IAP_ReadIapFlag(void);
-
-
+extern int IAP_WriteFlashBuf(u8 *buff, u32 len);
+extern void IAP_DownloadFlash(void);
+extern void IAP_DownloadLastPkgToFlash(void);
 
 #endif
 

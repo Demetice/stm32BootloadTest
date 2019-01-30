@@ -17,15 +17,15 @@ int main(void)
     LED_Init();		  					//初始化LED
     IAP_Init();
 
-    if (IAP_ReadIapFlag() == 0)
-    {
-        LOGD("Start app...");
-        IAP_LoadApp(APP_START_ADDR);
-    }
+//    if (IAP_ReadIapFlag() == 0)
+//    {
+//        LOGD("Start app...");
+//        IAP_LoadApp(APP_START_ADDR);
+//    }
     
     while (1)
     {
-        while(1)
+        for (int i = 0; i < 32; i++)
         {
             printf("Bootload start.\r\n");
             
@@ -34,16 +34,15 @@ int main(void)
 
             if (E_IAP_STATE_DOWNLOADING == IAP_GetState())
             {
-                LED1 = LED0;
-                LED0=~LED0;
                 while(E_IAP_STATE_DOWNLOAD_COMPLETE != IAP_GetState())
                 {
-                    //IAP_DownloadFlash();//需要下载最后一包进flash
+                    IAP_DownloadFlash();//需要下载最后一包进flash
                 }
             }
 
             if (E_IAP_STATE_DOWNLOAD_COMPLETE == IAP_GetState())
             {
+                IAP_DownloadLastPkgToFlash();
                 break;
             }
         }    

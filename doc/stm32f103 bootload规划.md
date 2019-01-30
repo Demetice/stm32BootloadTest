@@ -2,6 +2,8 @@
 
 采用bootload和app分开的模式这样可以后续远程升级程序。
 
+[TOC]
+
 ## 分配bootloader和app的空间
 
 它的flash的大小是512k,所以把它按下面分配，因为我们没有SD卡所以通过串口的程序需要放到第二区域，校验无误后才能放到第一个区域。
@@ -25,13 +27,53 @@ app 地址如下：
 
 ![ROM规划](./png/rom规划_app.png)
 
+## 交互流程图
+
+
+
 ## 下载串口协议
 
-1. 启动串口传输 先发送指令给下位机，让其复位。
+1.  协议格式如下
 
-2. 接收到下位机bootload启动后的指令发送(42 6F 6F 74 6C 6F 61 64 20 73 74 61 72 74 2E 0D 0A, 也就是"Bootload start.\r\n") , 指令进入下载模式 (发送31 0D 0A， “1\r\n”);
-3. 开始发送数据，分包发送。如果下位机不响应需要重发该包
-4. 发送完成后发送结速指令，复位下位机
+   ---------------------
+
+   | strart | len  | cmd  | ver  | STRUCT | chkSum        | end  |
+   | ------ | ---- | ---- | ---- | ------ | ------------- | ---- |
+   | 0x80   | -    | -    | -    | -      | 从start加到st | 0x0a |
+
+   长度（len)是从cmd 到end的长度，可以用于快速偏移，验证该数据包是不是命令包，结构体可以如下定义
+
+   ```c
+   typedef struct tagYourStruct
+   {
+       //your struct
+   }YOUR_STRUCT_S;
+   
+   typedef struct tagCommondEnterIAP
+   {
+       u8 start;
+       u8 len;
+       u8 cmd;
+       u8 ver;
+       YOUR_STRUCT_S data;
+       u8 chkSum;	
+       u8 end;
+   }CMD_ENTER_IAP_S;
+   ```
+
+2. 接收到下位机bootload启动后的指令发送(42 6F 6F 74 6C 6F 61 64 20 73 74 61 72 74 2E 0D 0A, 也就是"Bootload start.\r\n") 
+
+3. 进入下载模式
+
+   | start | len  | cmd  | ver  |      |      |
+   | ----- | ---- | ---- | ---- | ---- | ---- |
+   |       |      |      |      |      |      |
+
+4. 
+
+5. 开始发送数据，分包发送。如果下位机不响应需要重发该包
+
+6. 发送完成后发送结速指令，复位下位机
 
 通过USART1 波特率115200 串口获取数据，采用分包发送的模式给下位机发送数据，每个包需要带crc. 相邻两个包的发送间隔为n ms.
 

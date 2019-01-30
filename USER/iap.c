@@ -1,5 +1,11 @@
 #include "iap.h"
 #include "log.h"
+#include "stdlib.h"
+#include "stdio.h"
+#include "string.h"
+#include "sys.h"
+#include "delay.h"
+
 
 IAP_FLASH_BUF_S g_stIapBuf;
 IAP_STATE_E g_eIapState = E_IAP_STATE_NONE;
@@ -18,6 +24,7 @@ int IAP_WriteFlashBuf(u8 *buff, u32 len)
 	{
 		memcpy(&g_stIapBuf.buff[g_stIapBuf.idx * FLASH_PAGE_SIZE + g_stIapBuf.bufLen[g_stIapBuf.idx]], buff, len);
 		g_stIapBuf.bufLen[g_stIapBuf.idx] += len;
+        printf("c\r\n");
 	}
 	else if(len + g_stIapBuf.bufLen[g_stIapBuf.idx] > FLASH_PAGE_SIZE)
 	{
@@ -34,7 +41,7 @@ int IAP_WriteFlashBuf(u8 *buff, u32 len)
 
 		if (g_stIapBuf.complete[g_stIapBuf.idx] == 1)
 		{
-			printf("error recevie data too fast in buff :%d", g_stIapBuf.idx);
+			LOGD("error recevie data too fast in buff :%d", g_stIapBuf.idx);
 		}
 
 		int leftSize = len + g_stIapBuf.bufLen[g_stIapBuf.idx] - FLASH_PAGE_SIZE;
@@ -129,7 +136,6 @@ void IAP_WriteOtaData(u32 addr, u8 *data, u32 size)
     FLASH_WriteByte(addr, data, size);
 }
 
-
 void IAP_DownloadFlash()
 {
     for (int i = 0; i < 2; ++i)
@@ -137,12 +143,27 @@ void IAP_DownloadFlash()
         if (g_stIapBuf.complete[i] == 1)
         {
             IAP_WriteOtaData(g_stIapBuf.addr, &g_stIapBuf.buff[i * FLASH_PAGE_SIZE], FLASH_PAGE_SIZE);
+
             g_stIapBuf.complete[i] = 0;
             g_stIapBuf.bufLen[i] = 0;
             memset(&g_stIapBuf.buff[i * FLASH_PAGE_SIZE], 0, FLASH_PAGE_SIZE);
             g_stIapBuf.addr += FLASH_PAGE_SIZE;
+            printf("c\r\n");
         }
     }
+}
+
+void IAP_DownloadLastPkgToFlash()
+{
+    for (int i = 0; i < 2; i++)
+    {
+        if (g_stIapBuf.bufLen[i] != 0)
+        {
+            g_stIapBuf.complete[i] = 1;
+        }
+    }
+
+    IAP_DownloadFlash();
 }
 
 void IAP_LoadApp(u32 appxaddr)
