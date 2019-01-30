@@ -9,7 +9,7 @@
 #define WHEEL_ADP_USART_BAUD_RATE 57600
 #define UART4_REC_LEN 256
 
-typedef struct tagUart4Msg
+typedef struct
 {
     u32 len;
     u8 buf[UART4_REC_LEN];

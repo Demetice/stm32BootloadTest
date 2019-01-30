@@ -13,10 +13,13 @@
 //Copyright(C) 广州市星翼电子科技有限公司 2009-2019
 //All rights reserved									  
 ////////////////////////////////////////////////////////////////////////////////// 
+#ifdef DEBUG_ON_BOARD
+#define LED0 PBout(5)// PB5
+#define LED1 PEout(5)// PE5	
+#else
 #define LED0 PCout(2)// PC2
 #define LED1 PCout(3)// PC3	
-#define LED_TEST PCout(5)// PC5
-
+#endif
 
 void LED_Init(void);//初始化
 
