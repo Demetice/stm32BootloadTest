@@ -6,7 +6,7 @@ VL53L0X_Dev_t VL53L0XDevs[VL53L0X_DEVS_NUM];//设备I2C数据参数
 
 vu16 Distance_data=0;//保存测距数据
 
-u8 g_aucAlarmFlag[VL53L0X_DEVS_NUM] = 0;
+u8 g_aucAlarmFlag[VL53L0X_DEVS_NUM] = {0};
 
 //VL53L0X各精度模式参数
 //0：默认;1:高精度;2:长距离;3:高速
@@ -38,21 +38,25 @@ mode_data Mode_data[]=
 		
 };
 
-static void VL53L0X_GPIO_INIT(VOID)
+static void VL53L0X_GPIO_INIT(void)
 {
-    // Setup rangefinder device structs
     GPIO_InitTypeDef  GPIO_InitStructure;
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4 ;             //端口配置
+    
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+    // Setup rangefinder device structs
+	
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0 ;	           
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;       
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;     
+	GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+    VL53L0X_XSHUT_0 = 0;
+    delay_ms(30);
+
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_9 ;             //端口配置
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;       //推挽输出
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;      //IO口速度为50MHz
-    GPIO_Init(GPIOA, &GPIO_InitStructure);                 //根据设定参数初始化GPIOA
-
-    VL53L0X_XSHUT_0 = 0;//失能VL53L0X
-
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8 ;             //端口配置
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;       //推挽输出
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;      //IO口速度为50MHz
-    GPIO_Init(GPIOA, &GPIO_InitStructure);                 //根据设定参数初始化GPIOA
+    GPIO_Init(GPIOE, &GPIO_InitStructure);                 //根据设定参数初始化GPIOA
 
     VL53L0X_XSHUT_1 = 0;
 
@@ -63,7 +67,6 @@ static void VL53L0X_GPIO_INIT(VOID)
 void VL53L0X_begin(void)
 {
     int cnt = 0;
-    VL53L0X_Error rtn;
 
     VL53L0X_GPIO_INIT();
 
@@ -330,50 +333,51 @@ static void exti_init(void)
 
     GPIO_InitTypeDef GPIO_InitStructure;                      
 
-    RCC_APB2PeriphClockCmd( RCC_APB2Periph_GPIOA | \
-                            RCC_APB2Periph_AFIO, ENABLE);     
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;                 
+    RCC_APB2PeriphClockCmd( RCC_APB2Periph_GPIOB | 
+                            RCC_APB2Periph_AFIO |
+                            RCC_APB2Periph_GPIOE, ENABLE);     
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;                 
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;             
-    GPIO_Init(GPIOA, &GPIO_InitStructure); 
+    GPIO_Init(GPIOB, &GPIO_InitStructure); 
 
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;                             
-    GPIO_Init(GPIOA, &GPIO_InitStructure);  
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10;                             
+    GPIO_Init(GPIOE, &GPIO_InitStructure);  
 
-    GPIO_EXTILineConfig(GPIO_PortSourceGPIOA, GPIO_PinSource5); //选择EXTI信号源
-    GPIO_EXTILineConfig(GPIO_PortSourceGPIOA, GPIO_PinSource11); //选择EXTI信号源
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOB, GPIO_PinSource1); //选择EXTI信号源
+    GPIO_EXTILineConfig(GPIO_PortSourceGPIOE, GPIO_PinSource10); //选择EXTI信号源
     
     EXTI_InitTypeDef EXTI_InitStructure;                                                                                            
-    EXTI_InitStructure.EXTI_Line = EXTI_Line5;               //中断线选择
+    EXTI_InitStructure.EXTI_Line = EXTI_Line1;               //中断线选择
     EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;      //EXTI为中断模式
     EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Falling;  //下降沿触发
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;                //使能中断
     EXTI_Init(&EXTI_InitStructure); 
 
-    EXTI_InitStructure.EXTI_Line = EXTI_Line11;               //中断线选择
+    EXTI_InitStructure.EXTI_Line = EXTI_Line10;               //中断线选择
     EXTI_Init(&EXTI_InitStructure); 
 
     NVIC_Configuration();
 }
 
 //外部中断服务函数
-void EXTI9_5_IRQHandler(void)
+void EXTI1_IRQHandler(void)
 {
-    if(EXTI_GetITStatus(EXTI_Line5)!= RESET)  
+    if(EXTI_GetITStatus(EXTI_Line1)!= RESET)  
     { 
         g_aucAlarmFlag[0]=1;//标志
         //清除LINE5上的中断标志位 
-        EXTI_ClearITPendingBit(EXTI_Line5);
+        EXTI_ClearITPendingBit(EXTI_Line1);
     }
 }
 
 //外部中断服务函数
 void EXTI15_10_IRQHandler(void)
 {
-    if(EXTI_GetITStatus(EXTI_Line11)!= RESET)  
+    if(EXTI_GetITStatus(EXTI_Line10)!= RESET)  
     { 
-        g_aucAlarmFlag[1]=1;//标志
+        g_aucAlarmFlag[0]=1;//标志
         //清除LINE5上的中断标志位 
-        EXTI_ClearITPendingBit(EXTI_Line11);
+        EXTI_ClearITPendingBit(EXTI_Line10);
     }
 }
 

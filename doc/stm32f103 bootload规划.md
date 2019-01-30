@@ -12,18 +12,24 @@ stm32f103zet6的flash如下：
 
 
 
-0x08000000 ---0x0800 4FFF分配给bootloader使用，大小是20k
-0x0800 5000----0x0803 6FFF 分配给APP1的使用，大小是200k
+0x08000000 ---0x0800 4FFF分配给bootloader使用，大小是20k（验证过bootload 程序大概是12KB）
+0x0800 5000----0x0803 6FFF 分配给APP1的使用，大小是200k = 0x32000
 0x0803 7000----0x0806 8FFF 分配给APP2下载仓库使用，大小是200k
-0x0806 9000 ----0x0800 FFFF 分配给user_flag和其它标志使用，大小是1k
+0x0806 9000 ----0x0807 FFFF 分配给user_flag和其它标志使用，大小是92k
 
-![ROM规划](./png/rom规划.png)
+bootload地址规划如下：
+
+![bootload](./png/rom规划_bootload.png)
+
+app 地址如下：
+
+![ROM规划](./png/rom规划_app.png)
 
 ## 下载串口协议
 
 1. 启动串口传输 先发送指令给下位机，让其复位。
 
-2. 接收到下位机bootload启动后的指令发送 指令进入下载模式
+2. 接收到下位机bootload启动后的指令发送(42 6F 6F 74 6C 6F 61 64 20 73 74 61 72 74 2E 0D 0A, 也就是"Bootload start.\r\n") , 指令进入下载模式 (发送31 0D 0A， “1\r\n”);
 3. 开始发送数据，分包发送。如果下位机不响应需要重发该包
 4. 发送完成后发送结速指令，复位下位机
 
@@ -31,6 +37,21 @@ stm32f103zet6的flash如下：
 
 得到单个数据校验无误后放入flash, 并验证单包CRC，与总CRC.
 
+## 数据校验
+
+每个包要加入8位chksum，总包位加入CRC32校验，CRC32多项式为：0x04C11DB7
+
 ## 程序存储过程
 
 1. flash 需要整个扇区写入
+
+
+
+## 	Bootload 跳转到app
+
+![](./png/bootload_success.png)
+
+## 参考文档
+
+[STM32F10x 学习笔记3（CRC计算单元）](https://blog.csdn.net/liyuanbhu/article/details/8746044)
+

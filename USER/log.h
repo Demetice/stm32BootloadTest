@@ -14,7 +14,7 @@
 #define LOGD(fmt, ...) do{\
     printf("[D: %s:%d] ", __func__, __LINE__);\
     printf(fmt, ##__VA_ARGS__);\
-    printf("\n");\
+    printf("\r\n");\
 }while(0)
 #else
 #define LOGD(fmt, ...) 

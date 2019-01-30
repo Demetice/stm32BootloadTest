@@ -5,12 +5,9 @@
 #include "FreeRTOS.h"
 #include "log.h"
 #include "msg.h"
+#include "iap.h"
 
-//任务函数
-void vl53l0x0_task(void *pvParameters);
-//void TIM3_Int_Init(u16 arr,u16 psc);
-
-u32 g_cnt = 0;
+#define BOOTLOAD_SHOW_TIME 0x55
 
 int main(void)
 {
@@ -18,24 +15,47 @@ int main(void)
     delay_init();	    				//延时函数初始化	  
     uart_init(115200);					//初始化串口
     LED_Init();		  					//初始化LED
-    //TIM3_Int_Init(4999,7199);//10Khz的计数频率，计数到5000为500ms  
+    IAP_Init();
 
-    vl53l0x0_task(NULL);
-}
-
-
-//创建VL53L0X_0任务
-void vl53l0x0_task(void *pvParameters)
-{    
-    
-    while(1)
+    if (IAP_ReadIapFlag() == 0)
     {
-        LED0=~LED0;
-        LOGD("hello world 0");
-        delay_ms(1000);
+        LOGD("Start app...");
+        IAP_LoadApp(APP_START_ADDR);
     }
+    
+    while (1)
+    {
+        while(1)
+        {
+            printf("Bootload start.\r\n");
+            
+            LED0=~LED0;
+            delay_ms(1000);    
+
+            if (E_IAP_STATE_DOWNLOADING == IAP_GetState())
+            {
+                LED1 = LED0;
+                LED0=~LED0;
+                while(E_IAP_STATE_DOWNLOAD_COMPLETE != IAP_GetState())
+                {
+                    //IAP_DownloadFlash();//需要下载最后一包进flash
+                }
+            }
+
+            if (E_IAP_STATE_DOWNLOAD_COMPLETE == IAP_GetState())
+            {
+                break;
+            }
+        }    
+
+        IAP_SetIapFlag(0);
+        LOGD("Start app...");
+        IAP_LoadApp(APP_START_ADDR);
+        IAP_SetState(E_IAP_STATE_NONE);
+    }        
 }
 
+#if 0
 //通用定时器3中断初始化
 //这里时钟选择为APB1的2倍，而APB1为36M
 //arr：自动重装值。
@@ -82,7 +102,7 @@ void TIM3_IRQHandler(void)   //TIM3中断
     }
 }
    
-
+#endif
 
 
 

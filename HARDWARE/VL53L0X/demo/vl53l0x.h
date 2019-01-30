@@ -7,15 +7,15 @@
 #include "delay.h"
 #include "led.h"
 //sensors numbers
-#define VL53L0X_DEVS_NUM 2
+#define VL53L0X_DEVS_NUM 1
 
 
 //VL53L0X传感器上电默认IIC地址为0X52(不包含最低位)
 #define VL53L0X_DEFAULT_ADDR 0x52
 
 //控制Xshut电平,从而使能VL53L0X工作 1:使能 0:关闭
-#define VL53L0X_XSHUT_0 PAout(4)	
-#define VL53L0X_XSHUT_1 PAout(8)	
+#define VL53L0X_XSHUT_0 PBout(0)	
+#define VL53L0X_XSHUT_1 PEout(9)	
 
 
 //使能2.8V IO电平模式

@@ -116,7 +116,12 @@
  #ifdef STM32F10X_CL   
   #define HSE_VALUE    ((uint32_t)25000000) /*!< Value of the External oscillator in Hz */
  #else 
-  #define HSE_VALUE    ((uint32_t)24000000) /*!< Value of the External oscillator in Hz */
+ #ifdef DEBUG_ON_BOARD
+    #define HSE_VALUE    ((uint32_t)8000000) /*!< Value of the External oscillator in Hz */
+ #else
+    #define HSE_VALUE    ((uint32_t)24000000) /*!< Value of the External oscillator in Hz */
+ #endif
+  
  #endif /* STM32F10X_CL */
 #endif /* HSE_VALUE */
 

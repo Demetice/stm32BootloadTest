@@ -6,6 +6,8 @@
 #include "FreeRTOS.h"					//FreeRTOS使用	 	  
 #endif 
 #include "log.h"
+#include "iap.h"
+
 //////////////////////////////////////////////////////////////////
 //加入以下代码,支持printf函数,而不需要选择use MicroLIB	  
 #if 1
@@ -36,7 +38,9 @@ int fputc(int ch, FILE *f)
 #if EN_USART1_RX   //如果使能了接收
 UART_MSG_S g_stUart1Msg = {0};
 
-u8 g_aucBuff[2][2048];
+u8 g_aucBuff[2][FLASH_PAGE_SIZE];
+u8 curBufIdx = 0;
+u32 g_aucBuffLen[2] = {0};
 
 void uart_init(u32 bound){
     //GPIO端口设置
@@ -99,6 +103,9 @@ void uart_init(u32 bound){
     DMA_Init(DMA1_Channel5, &DMA_InitStructure);            
     DMA_ClearFlag(DMA1_FLAG_GL5);                              
     DMA_Cmd(DMA1_Channel5, ENABLE);  
+
+    memset(g_aucBuff, 0, sizeof(g_aucBuff));
+    curBufIdx = 0;
 }
 
 void USART1_Send_Byte(u8 Data) //发送一个字节；
@@ -128,14 +135,54 @@ void USART1DmaClr(void)
 
 void USART1_IRQHandler(void) //中断处理函数；
 {    
+    static u32 offset = 0;
+
     if(USART_GetITStatus(USART1, USART_IT_IDLE) == SET) //判断是否发生中断；
     {
         USART_ReceiveData(USART1);
         g_stUart1Msg.len = USART_REC_LEN - DMA_GetCurrDataCounter(DMA1_Channel5); //算出接本帧数据长度
-        //printf("usart1 receive data by dma len:%u\r\n", g_ucUsart1ReceiveDataLen);
-        //USART1_Send_Bytes(USART_RX_BUF, g_ucUsart1ReceiveDataLen);
-        //MessageSendFromISR(MSG_ID_USART1_DMA_RECEIVE, (uint32_t)&g_stUart1Msg, &xHigherPriorityTaskWoken);
-        LOGD("%s", g_stUart1Msg.buf);
+
+        USART1_Send_Bytes(g_stUart1Msg.buf, g_stUart1Msg.len);
+        
+        if (g_stUart1Msg.len == 3
+            && g_stUart1Msg.buf[0] == 0x32
+            && g_stUart1Msg.buf[1] == 0x0d
+            && g_stUart1Msg.buf[2] == 0x0a)
+        {
+            IAP_SetState(E_IAP_STATE_DOWNLOAD_COMPLETE);        
+            LOGD("Enter complete..");
+        }
+
+        if (IAP_GetState() == E_IAP_STATE_NONE 
+            && g_stUart1Msg.len == 3
+            && g_stUart1Msg.buf[0] == 0x31
+            && g_stUart1Msg.buf[1] == 0x0d
+            && g_stUart1Msg.buf[2] == 0x0a)
+        {
+            IAP_SetState(E_IAP_STATE_DOWNLOADING);
+            LOGD("Enter downloading..");
+        }
+        else if (IAP_GetState() == E_IAP_STATE_DOWNLOADING)
+        {
+            if (g_stUart1Msg.len + offset > FLASH_PAGE_SIZE)
+            {
+                memcpy(g_aucBuff[curBufIdx] + offset, g_stUart1Msg.buf, FLASH_PAGE_SIZE - offset);
+                g_aucBuffLen[curBufIdx] = FLASH_PAGE_SIZE;
+                ++curBufIdx;
+                if (curBufIdx > 1)curBufIdx = 0;
+                memcpy(g_aucBuff[curBufIdx], 
+                    g_stUart1Msg.buf + FLASH_PAGE_SIZE - offset, 
+                    g_stUart1Msg.len + offset - FLASH_PAGE_SIZE);
+                offset = g_stUart1Msg.len + offset - FLASH_PAGE_SIZE;
+                g_aucBuffLen[curBufIdx] = offset;
+            }
+            else
+            {
+                memcpy(g_aucBuff[curBufIdx] + offset, g_stUart1Msg.buf, g_stUart1Msg.len);
+                offset += g_stUart1Msg.len;
+                g_aucBuffLen[curBufIdx] = offset;
+            }
+        }
         
         USART_ClearITPendingBit(USART1, USART_IT_IDLE);         //清除中断标志
         USART1DmaClr();                   //恢复DMA指针，等待下一次的接收

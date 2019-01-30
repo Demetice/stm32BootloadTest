@@ -204,6 +204,22 @@ typedef struct tagXXX
    
    ```
 
+7. 查询软件版本号
+
+8. 复位并进入bootload
+
+    ```c
+    cmd  = 0x50;
+    type = 0;
+    
+    typedef struct tagReset
+    {
+        unsigned long rsv;
+    }RESET_S;
+    
+    ```
+
+9. 
 
 ## 关于网络序编程说明
 

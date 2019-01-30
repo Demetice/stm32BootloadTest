@@ -4,7 +4,7 @@
 #include "sys.h" 
 
 
-#define USART_REC_LEN  			256  	//定义最大接收字节数 256
+#define USART_REC_LEN  			2048  	//定义最大接收字节数 256
 #define EN_USART1_RX 			1		//使能（1）/禁止（0）串口1接收
 
 

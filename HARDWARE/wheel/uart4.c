@@ -26,7 +26,7 @@ void UART4_Configuration(void)
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING; //浮空输入；
     GPIO_Init(GPIOC, &GPIO_InitStructure); //端口C；
 
-    USART_InitStructure.USART_BaudRate = 57600; //波特率；
+    USART_InitStructure.USART_BaudRate = WHEEL_ADP_USART_BAUD_RATE; //波特率；
     USART_InitStructure.USART_WordLength = USART_WordLength_8b; //数据位8位；
     USART_InitStructure.USART_StopBits = USART_StopBits_1; //停止位1位；
     USART_InitStructure.USART_Parity = USART_Parity_No ; //无校验位；
@@ -39,8 +39,8 @@ void UART4_Configuration(void)
     NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4); //设置中断组，4位抢占优先级，4位响应优先级；
 
     NVIC_InitStructure.NVIC_IRQChannel = UART4_IRQn; //中断号；
-    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 7; //抢占优先级；
-    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1; //响应优先级；
+    NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3; //抢占优先级；
+    NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3; //响应优先级；
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
 
@@ -102,7 +102,7 @@ void UART4_IRQHandler(void) //中断处理函数；
         g_stUart4Msg.len = UART4_REC_LEN - DMA_GetCurrDataCounter(DMA2_Channel3); //算出接本帧数据长度
 
         //释放数据接收完毕信号，不在中断里面处理数据解析
-        MessageSendFromISR(MSG_ID_WHEEL_STATE, (uint32_t)&g_stUart4Msg, &xHigherPriorityTaskWoken);
+        //MessageSendFromISR(MSG_ID_WHEEL_STATE, (uint32_t)&g_stUart4Msg, &xHigherPriorityTaskWoken);
 
         USART_ClearITPendingBit(UART4, USART_IT_IDLE);         //清除中断标志
         UART4DmaClr();                   //恢复DMA指针，等待下一次的接收
