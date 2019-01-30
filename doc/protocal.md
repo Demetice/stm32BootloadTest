@@ -1,4 +1,4 @@
-# EGO3底盘与上位机交互协议
+# 与上位机交互协议
 
 > 注意：协议内的数据都是大端序，使用之前需要转换为本地序
 
@@ -204,6 +204,22 @@ typedef struct tagXXX
    
    ```
 
+7. 查询软件版本号
+
+8. 复位并进入bootload
+
+    ```c
+    cmd  = 0x50;
+    type = 0;
+    
+    typedef struct tagReset
+    {
+        unsigned long rsv;
+    }RESET_S;
+    
+    ```
+
+9. 
 
 ## 关于网络序编程说明
 
