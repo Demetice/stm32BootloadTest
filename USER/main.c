@@ -7,7 +7,7 @@
 #include "msg.h"
 #include "iap.h"
 
-#define BOOTLOAD_SHOW_TIME 0x55
+#define BOOTLOAD_SHOW_TIME 0x5
 
 int main(void)
 {
@@ -25,7 +25,7 @@ int main(void)
     
     while (1)
     {
-        for (int i = 0; i < 32; i++)
+        for (int i = 0; i < BOOTLOAD_SHOW_TIME; i++)
         {
             printf("Bootload start.\r\n");
             

@@ -65,12 +65,30 @@ typedef struct tagIapCmdHdr
    {
    	u32 flieSize; //下载开始前预先告知文件大小， 所有的数据都是网络序，请注意字节序
    	u32 crc32;    //告诉CRC32，
-   }
+   }IAP_DOWNLOAD_START_S;
    ```
 
-4. 开始发送数据，分包发送。如果下位机不响应需要重发该包
+4. 开始发送数据，分包发送。
+
+   ```c
+   cmd = 0x81;
+   ver = 0;
+   
+   ```
 
 5. 发送完成后发送结速指令，复位下位机
+
+   ```c
+   cmd = 0x82;
+   ver = 0;
+   
+   typedef struct 
+   {
+       char aursv[4];
+   }IAP_DOWNLOAD_END_S;
+   
+   ```
+
 
 通过USART1 波特率115200 串口获取数据，采用分包发送的模式给下位机发送数据，每个包需要带crc. 相邻两个包的发送间隔为n ms.
 
