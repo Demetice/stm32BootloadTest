@@ -7,6 +7,9 @@
 #include "vl53l0x.h"
 #include "log.h"
 #include "msg.h"
+#include "uart2.h"
+#include "uart3.h"
+#include "uart4.h"
 
 //任务优先级
 #define START_TASK_PRIO		1
@@ -41,7 +44,10 @@ int main(void)
     delay_init();	    				//延时函数初始化	  
     uart_init(115200);					//初始化串口
     LED_Init();		  					//初始化LED
-    UART4_Configuration();
+    
+    UART2_Init();
+    UART3_Init();
+    UART4_Init();
 
     //初始时msg系统
     LinkListInit();
@@ -123,14 +129,23 @@ void led0_task(void *pvParameters)
 void vl53l0x0_task(void *pvParameters)
 {
     int led_state = 1;
-    u8 buff[20] = "1234\n";
+    char buff[20] = "1234\n";
     
     while(1)
     {
         LED0=~LED0;
         LOGD("hello world 7788");
-        UART4_Send_Bytes(buff, 5);
-        vTaskDelay(1000);
+        
+        snprintf(buff, 19, "I'm uart3\r\n");
+        UART3_Send_Bytes((u8*)buff, strlen(buff));
+
+        snprintf(buff, 19, "I'm uart4\r\n");
+        UART4_Send_Bytes((u8*)buff, strlen(buff));
+
+        snprintf(buff, 19, "I'm uart2\r\n");
+        UART2_Send_Bytes((u8*)buff, strlen(buff));
+        
+        vTaskDelay(300);
         led_state = !led_state;
         MessageSend(MSG_ID_RED_LED_CONTROL, &led_state, sizeof(int), MESSAGE_IS_POINTER);
     }

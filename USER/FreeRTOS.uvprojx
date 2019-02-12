@@ -335,7 +335,7 @@
             <v6Rtti>0</v6Rtti>
             <VariousControls>
               <MiscControls></MiscControls>
-              <Define>STM32F10X_HD,USE_STDPERIPH_DRIVER  DEBUG_ON_BOARD</Define>
+              <Define>STM32F10X_HD,USE_STDPERIPH_DRIVER  DEBUG_ON_BOARD_OFF</Define>
               <Undefine></Undefine>
               <IncludePath>..\USER;..\CORE;..\STM32F10x_FWLib\inc;..\SYSTEM\delay;..\SYSTEM\sys;..\SYSTEM\usart;..\HARDWARE\LED;..\FreeRTOS\include;..\FreeRTOS\portable\RVDS\ARM_CM3;..\HARDWARE\VL53L0X\core;..\HARDWARE\VL53L0X\demo;..\HARDWARE\VL53L0X\platform;..\common;..\HARDWARE\wheel</IncludePath>
             </VariousControls>
@@ -687,14 +687,14 @@
               <FilePath>..\HARDWARE\wheel\wheel_drv_zlac706.c</FilePath>
             </File>
             <File>
-              <FileName>uart3.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\HARDWARE\wheel\uart3.c</FilePath>
-            </File>
-            <File>
               <FileName>uart2.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\HARDWARE\wheel\uart2.c</FilePath>
+            </File>
+            <File>
+              <FileName>uart3.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\HARDWARE\wheel\uart3.c</FilePath>
             </File>
           </Files>
         </Group>
