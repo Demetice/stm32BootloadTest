@@ -9,6 +9,7 @@
 #include "iap.h"
 #include "led.h"
 #include "string.h"
+#include "public.h"
 
 //////////////////////////////////////////////////////////////////
 //加入以下代码,支持printf函数,而不需要选择use MicroLIB	  
@@ -126,7 +127,6 @@ void USART1_Send_Bytes(u8 *Data, u8 len) //发送字符串；
     }
 }
 
-
 void USART1DmaClr(void)
 {
     DMA_Cmd(DMA1_Channel5, DISABLE);
@@ -135,38 +135,71 @@ void USART1DmaClr(void)
     DMA_Cmd(DMA1_Channel5, ENABLE);
 }
 
+UART1_MSG_REG_S g_stUart1MsgHandle[] = 
+{
+    {0x50, IAP_ResetAndEnterIapMode, NULL},
+    {0x80, IAP_HandleMsgStartIap, NULL},
+    {0x81, IAP_HandleMsgDownload, NULL},
+    {0x82, IAP_HandleMsgFinishDownload, NULL},
+};
+
+int USRAT1_CheckMsgFormat(u8 *buf, u32 len)
+{
+    u8 chkSum = 0;
+
+    if ((buf[0] != USART1_MSG_START_BYTE)
+        ||(buf[len - 1] != USART1_MSG_END_BYTE))
+    {
+        LOGD("Start byte or end byte error");
+        return E_RTN_MSG_ERROR;
+    }
+
+    if (len < buf[1])
+    {
+        LOGD("msg length error");
+        return E_RTN_MSG_ERROR;
+    }
+
+    for (int i = 0; i < len - 2; ++i)
+    {
+        chkSum += buf[i];
+    }
+
+    if (chkSum != buf[len - 2])
+    {
+        LOGD("chksum error");
+        return E_RTN_MSG_ERROR;
+    }
+
+    return E_RTN_OK;
+}
+
 void USART1_IRQHandler(void) //中断处理函数；
 {    
+    IAP_CMD_HDR_S *pstCmdHdr = NULL;
+    int rtn = 0;
+
     if(USART_GetITStatus(USART1, USART_IT_IDLE) == SET) //判断是否发生中断；
     {
         USART_ReceiveData(USART1);
         g_stUart1Msg.len = USART_REC_LEN - DMA_GetCurrDataCounter(DMA1_Channel5); //算出接本帧数据长度
-        
-        if (IAP_GetState() == E_IAP_STATE_NONE 
-            && g_stUart1Msg.len == 3
-            && g_stUart1Msg.buf[0] == 0x31
-            && g_stUart1Msg.buf[1] == 0x0d
-            && g_stUart1Msg.buf[2] == 0x0a)
-        {
-            IAP_SetState(E_IAP_STATE_DOWNLOADING);
-            LOGD("Enter downloading..");
-        }
-        else if (IAP_GetState() == E_IAP_STATE_DOWNLOADING)
-        {
 
-            if (g_stUart1Msg.len == 3
-                && g_stUart1Msg.buf[0] == 0x32
-                && g_stUart1Msg.buf[1] == 0x0d
-                && g_stUart1Msg.buf[2] == 0x0a)
+        if (E_RTN_OK == USRAT1_CheckMsgFormat(g_stUart1Msg.buf, g_stUart1Msg.len))
+        {
+            pstCmdHdr = (IAP_CMD_HDR_S *)g_stUart1Msg.buf;
+            for (int i = 0; i < ARRAY_SIZE(g_stUart1MsgHandle); ++i)
             {
-                IAP_SetState(E_IAP_STATE_DOWNLOAD_COMPLETE);        
-                LOGD("Enter complete..");
-            }
-            else
-            {
-                IAP_WriteFlashBuf(g_stUart1Msg.buf, g_stUart1Msg.len);
+                if (g_stUart1MsgHandle[i].cmd == pstCmdHdr->cmd)
+                {
+                    rtn = g_stUart1MsgHandle[i].pfnHandle(g_stUart1Msg.buf + sizeof(IAP_CMD_HDR_S), g_stUart1Msg.len - IAP_MSG_HDR_AND_TAIL_LEN);
+                    if (rtn != E_RTN_OK)
+                    {
+                        LOGD("handle msg %x error rtn :%d", pstCmdHdr->cmd, rtn);
+                    }
+                }
             }
         }
+
         LED1 = ~LED1;
         USART_ClearITPendingBit(USART1, USART_IT_IDLE);         //清除中断标志
         USART1DmaClr();                   //恢复DMA指针，等待下一次的接收

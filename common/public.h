@@ -8,6 +8,9 @@ typedef unsigned long ULONG;
 typedef unsigned short USHORT;
 typedef unsigned char UCHAR;
 
+#define MAX_ULONG 0xffffffff
+#define MAX_USHORT 0xffff
+#define MAX_UCHAR 0xff
 
 
 #define LITTLE_ENDIAN (1)
@@ -38,6 +41,8 @@ typedef unsigned char UCHAR;
  
 #endif
 
+#define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
+
 
 typedef enum 
 {
@@ -46,6 +51,7 @@ typedef enum
     E_RTN_MALLOC_FAIL = 2,
     E_RTN_ERROR_PARAM = 3,
     E_RTN_FATAL_ERROR = 4,
+    E_RTN_MSG_ERROR = 5,
 
     
     E_RTN_BUTT

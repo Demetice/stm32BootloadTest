@@ -17,12 +17,8 @@
 #define APP_END_ADDR    (uint32_t)0x08036FFF
 
 //OTA 缓存文件存放地址
-//#define OTA_START_ADDR   ((uint32_t) 0x08037000)//写入的起始地址
-//#define OTA_END_ADDR     ((uint32_t)0x08068FFF)//结束地址
-
-#define OTA_START_ADDR   APP_START_ADDR  //写入的起始地址
-#define OTA_END_ADDR     APP_END_ADDR    //结束地址
-
+#define OTA_START_ADDR   ((uint32_t) 0x08037000)//写入的起始地址
+#define OTA_END_ADDR     ((uint32_t)0x08068FFF)//结束地址
 
 //FLAG 起始地址
 #define FLAG_START_ADDR (uint32_t)0x08069000
@@ -49,6 +45,8 @@ typedef struct tagIapFlashBuff
     u8 complete[2];
     u32 bufLen[2];
     u32 addr;
+    u32 crc32;
+    u32 fileSize;
 }IAP_FLASH_BUF_S;
 
 
@@ -60,6 +58,12 @@ typedef struct tagIapCmdHdr
     u8 ver;
 }IAP_CMD_HDR_S;
 
+typedef struct tagIapStart
+{
+    u32 ulFileSize;
+    u32 ulCrc32;
+}IAP_START_S;
+
 
 typedef struct tagIapCmdEnterDownloadMode
 {
@@ -68,6 +72,9 @@ typedef struct tagIapCmdEnterDownloadMode
     u8 chksum;
     u8 end; // 0x0a
 }IAP_CMD_ENTER_DOWNLOAD_S;
+
+#define IAP_MSG_HDR_AND_TAIL_LEN (sizeof(IAP_CMD_HDR_S) + 2)
+
 
 extern IAP_FLASH_BUF_S g_stIapBuf;
 
@@ -81,6 +88,23 @@ extern u16 IAP_ReadIapFlag(void);
 extern int IAP_WriteFlashBuf(u8 *buff, u32 len);
 extern void IAP_DownloadFlash(void);
 extern void IAP_DownloadLastPkgToFlash(void);
+
+extern uint32_t IAP_GetCrc32(void);
+extern void IAP_SetCrc32(uint32_t crc32);
+extern uint32_t IAP_GetFileSize(void);
+extern void IAP_SetFileSize(uint32_t fileSize);
+
+
+//消息处理函数
+int IAP_ResetAndEnterIapMode(u8 *buf, u32 len); //cmd 0x50
+int IAP_HandleMsgStartIap(u8 *buf, u32 len);
+int IAP_HandleMsgDownload(u8 *buf, u32 len);
+int IAP_HandleMsgFinishDownload(u8 *buf, u32 len);
+
+int IAP_CopyProgramToAppArea(void);
+
+
+
 
 #endif
 

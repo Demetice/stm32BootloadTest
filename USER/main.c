@@ -7,7 +7,7 @@
 #include "msg.h"
 #include "iap.h"
 
-#define BOOTLOAD_SHOW_TIME 0x5
+#define BOOTLOAD_SHOW_TIME 0x15
 
 int main(void)
 {
@@ -43,6 +43,7 @@ int main(void)
             if (E_IAP_STATE_DOWNLOAD_COMPLETE == IAP_GetState())
             {
                 IAP_DownloadLastPkgToFlash();
+                IAP_CopyProgramToAppArea();
                 break;
             }
         }    

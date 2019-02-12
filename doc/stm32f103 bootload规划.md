@@ -89,6 +89,21 @@ typedef struct tagIapCmdHdr
    
    ```
 
+6. 下载完后，下位机会对数据完整性进行CRC校验，如果成功就返回成功，如果失败返回失败
+
+   ```c
+   //下位机发送给上位机
+   cmd = 0x83;
+   ver = 0;
+   
+   typedef struct 
+   {
+       char state; //0 OK, 其它值失败
+       char auRsv[3];
+   }IAP_DOWNLOAD_STATE_S;
+   
+   ```
+
 
 通过USART1 波特率115200 串口获取数据，采用分包发送的模式给下位机发送数据，每个包需要带crc. 相邻两个包的发送间隔为n ms.
 

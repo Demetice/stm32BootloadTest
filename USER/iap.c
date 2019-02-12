@@ -5,18 +5,46 @@
 #include "string.h"
 #include "sys.h"
 #include "delay.h"
-
+#include "public.h"
+#include "crc32.h"
+#include "usart.h"
 
 IAP_FLASH_BUF_S g_stIapBuf;
 IAP_STATE_E g_eIapState = E_IAP_STATE_NONE;
+
+u32 g_ulCalcCrc32Tmp = MAX_ULONG;
+u32 g_ulCalcCrc32 = 0;
+
+uint32_t IAP_GetCrc32(void)
+{
+    return g_stIapBuf.crc32;
+}
+
+void IAP_SetCrc32(uint32_t crc32)
+{
+    g_stIapBuf.crc32 = crc32;
+    LOGD("CRC32 IS :%#x", crc32);
+}
+
+
+uint32_t IAP_GetFileSize(void)
+{
+    return g_stIapBuf.fileSize;
+}
+
+void IAP_SetFileSize(uint32_t fileSize)
+{
+    g_stIapBuf.fileSize = fileSize;
+    LOGD("File size is :%u", fileSize);
+}
 
 void IAP_Init(void)
 {
     memset(&g_stIapBuf, 0, sizeof(g_stIapBuf));
     g_eIapState = E_IAP_STATE_NONE;
     g_stIapBuf.addr = OTA_START_ADDR;
+    g_ulCalcCrc32Tmp = MAX_ULONG;
 }
-
 
 int IAP_WriteFlashBuf(u8 *buff, u32 len)
 {
@@ -204,4 +232,95 @@ u16 IAP_ReadIapFlag(void)
 {
     return *((u16*)FLAG_START_ADDR);
 }
+
+int IAP_ResetAndEnterIapMode(u8 *buf, u32 len)
+{
+    IAP_SetIapFlag(1);
+    IAP_ResetMCU();
+    return E_RTN_OK;
+}
+
+int IAP_HandleMsgStartIap(u8 *buf, u32 len)
+{
+    IAP_START_S *pstStartCmd = (IAP_START_S *)buf;
+
+    if (len < sizeof(IAP_START_S))
+    {  
+        LOGD("msg length error");
+        return E_RTN_MSG_ERROR;
+    }
+
+    if (IAP_GetState() == E_IAP_STATE_NONE) 
+    {
+        IAP_SetState(E_IAP_STATE_DOWNLOADING);
+
+        IAP_SetFileSize(pstStartCmd->ulFileSize);
+        IAP_SetCrc32(pstStartCmd->ulCrc32);
+
+        LOGD("Enter downloading..");
+
+        return E_RTN_OK;
+    }
+
+    LOGD("state error");
+    return E_RTN_MSG_ERROR;
+}
+
+int IAP_HandleMsgDownload(u8 *buf, u32 len)
+{
+    if (IAP_GetState() == E_IAP_STATE_DOWNLOADING) 
+    {    
+        g_ulCalcCrc32 = CalcCrc32(g_ulCalcCrc32Tmp, len, buf);
+        g_ulCalcCrc32Tmp = MAX_ULONG ^ g_ulCalcCrc32;
+        return IAP_WriteFlashBuf(buf, len);
+    }
+
+    LOGD("state error");
+    return E_RTN_MSG_ERROR;   
+}
+
+int IAP_HandleMsgFinishDownload(u8 *buf, u32 len)
+{
+    if (IAP_GetState() == E_IAP_STATE_DOWNLOADING) 
+    {    
+        IAP_SetState(E_IAP_STATE_DOWNLOAD_COMPLETE);        
+        LOGD("Enter complete.. origin CRC32 is : %#x, calc crc32 is: %#x", g_stIapBuf.crc32, g_ulCalcCrc32);
+
+        return E_RTN_OK;
+    }
+
+    LOGD("state error");
+    return E_RTN_MSG_ERROR;   
+}
+
+int IAP_CopyProgramToAppArea(void)
+{
+    u8 buf[4] = {0x83, 1, 0x0a, 0};
+    u32 otaAddr = OTA_START_ADDR;
+    u32 appAddr = APP_START_ADDR;
+
+    if (g_stIapBuf.crc32 != g_ulCalcCrc32)
+    {
+        LOGD("download error crc check error");
+        USART1_Send_Bytes(buf, 4);
+        return E_RTN_FATAL_ERROR;
+    }
+
+    LOGD("CRC check right, start copy program to app area.");
+
+    for (int i = 0; i <= g_stIapBuf.fileSize / FLASH_PAGE_SIZE; ++i)
+    {
+        memcpy(g_stIapBuf.buff, (void *)otaAddr, FLASH_PAGE_SIZE);
+        FLASH_WriteByte(appAddr, g_stIapBuf.buff, FLASH_PAGE_SIZE);
+        otaAddr += FLASH_PAGE_SIZE;
+        appAddr += FLASH_PAGE_SIZE;
+    }
+    
+    
+    buf[1] = 0;
+    USART1_Send_Bytes(buf, 4);
+    
+    return E_RTN_OK;
+}
+
 
