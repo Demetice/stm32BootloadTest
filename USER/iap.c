@@ -319,6 +319,8 @@ int IAP_CopyProgramToAppArea(void)
     
     buf[1] = 0;
     USART1_Send_Bytes(buf, 4);
+
+    IAP_SetIapFlag(0);
     
     return E_RTN_OK;
 }
