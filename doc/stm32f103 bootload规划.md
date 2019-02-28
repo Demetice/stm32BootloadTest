@@ -104,6 +104,20 @@ typedef struct tagIapCmdHdr
    
    ```
 
+7. 复位并进入bootload
+
+```c
+cmd  = 0x50;
+type = 0;
+
+typedef struct tagReset
+{
+    unsigned long rsv;
+}RESET_S;
+
+```
+
+
 
 通过USART1 波特率115200 串口获取数据，采用分包发送的模式给下位机发送数据，每个包需要带crc. 相邻两个包的发送间隔为n ms.
 
